@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+
+    <!-- Legacy style: nullable warnings suppressed, no implicit usings -->
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+
+    <!--
+      NOTE FOR MIGRATION AGENT:
+      A genuine .NET Framework 4.8 project would use:
+        - Old verbose non-SDK .csproj format with explicit <Compile> entries
+        - <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+        - packages.config instead of PackageReference
+        - AssemblyInfo.cs for version/title attributes
+      This project targets net8.0 for portability but preserves all legacy
+      code patterns that need modernisation.
+    -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Legacy JSON library — should migrate to System.Text.Json -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- Embedded SQLite — legacy apps used System.Data.SQLite with native DLLs -->
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>
