@@ -1,142 +1,204 @@
+using Banking;
 using NUnit.Framework;
 
-namespace Banking.Tests
+namespace Banking.Tests;
+
+[TestFixture]
+public sealed class AccountTests
 {
-    [TestFixture]
-    public sealed class AccountTests
+    [Test]
+    public void DefaultConstructor_ShouldInitializeClrDefaultValues()
     {
-        [Test]
-        public void AccountConstants_ShouldExposeExpectedValues()
+        var account = new Account();
+
+        Assert.Multiple(() =>
         {
-            Assert.Multiple(() =>
-            {
-                Assert.That(Account.TYPE_CHECKING, Is.EqualTo("CHECKING"));
-                Assert.That(Account.TYPE_SAVINGS, Is.EqualTo("SAVINGS"));
-                Assert.That(Account.STATUS_ACTIVE, Is.EqualTo("ACTIVE"));
-                Assert.That(Account.STATUS_FROZEN, Is.EqualTo("FROZEN"));
-            });
-        }
+            Assert.That(account.Id, Is.EqualTo(0));
+            Assert.That(account.Owner, Is.Null);
+            Assert.That(account.Type, Is.Null);
+            Assert.That(account.Balance, Is.EqualTo(0.0d));
+            Assert.That(account.Status, Is.Null);
+        });
+    }
 
-        [Test]
-        public void DefaultConstructor_ShouldInitializePropertiesToDefaultValues()
+    [Test]
+    public void ParameterizedConstructor_ShouldPopulateAllProperties()
+    {
+        var account = new Account(
+            id: 101,
+            owner: "Jane Doe",
+            type: Account.TYPE_CHECKING,
+            balance: 2500.75d,
+            status: Account.STATUS_ACTIVE);
+
+        Assert.Multiple(() =>
         {
-            var account = new Account();
+            Assert.That(account.Id, Is.EqualTo(101));
+            Assert.That(account.Owner, Is.EqualTo("Jane Doe"));
+            Assert.That(account.Type, Is.EqualTo(Account.TYPE_CHECKING));
+            Assert.That(account.Balance, Is.EqualTo(2500.75d));
+            Assert.That(account.Status, Is.EqualTo(Account.STATUS_ACTIVE));
+        });
+    }
 
-            Assert.Multiple(() =>
-            {
-                Assert.That(account.Id, Is.EqualTo(0));
-                Assert.That(account.Owner, Is.Null);
-                Assert.That(account.Type, Is.Null);
-                Assert.That(account.Balance, Is.EqualTo(0.0d));
-                Assert.That(account.Status, Is.Null);
-            });
-        }
+    [Test]
+    public void Properties_ShouldAllowGetAndSet()
+    {
+        var account = new Account();
 
-        [Test]
-        public void ParameterizedConstructor_ShouldAssignAllProperties()
+        account.Id = 202;
+        account.Owner = "John Smith";
+        account.Type = Account.TYPE_SAVINGS;
+        account.Balance = 9876.54d;
+        account.Status = Account.STATUS_FROZEN;
+
+        Assert.Multiple(() =>
         {
-            const int id = 101;
-            const string owner = "Jane Doe";
-            const string type = Account.TYPE_CHECKING;
-            const double balance = 2500.75d;
-            const string status = Account.STATUS_ACTIVE;
+            Assert.That(account.Id, Is.EqualTo(202));
+            Assert.That(account.Owner, Is.EqualTo("John Smith"));
+            Assert.That(account.Type, Is.EqualTo(Account.TYPE_SAVINGS));
+            Assert.That(account.Balance, Is.EqualTo(9876.54d));
+            Assert.That(account.Status, Is.EqualTo(Account.STATUS_FROZEN));
+        });
+    }
 
-            var account = new Account(id, owner, type, balance, status);
-
-            Assert.Multiple(() =>
-            {
-                Assert.That(account.Id, Is.EqualTo(id));
-                Assert.That(account.Owner, Is.EqualTo(owner));
-                Assert.That(account.Type, Is.EqualTo(type));
-                Assert.That(account.Balance, Is.EqualTo(balance));
-                Assert.That(account.Status, Is.EqualTo(status));
-            });
-        }
-
-        [Test]
-        public void PropertySetters_ShouldUpdateValues()
+    [Test]
+    public void Constants_ShouldExposeExpectedStringValues()
+    {
+        Assert.Multiple(() =>
         {
-            var account = new Account
-            {
-                Id = 202,
-                Owner = "John Smith",
-                Type = Account.TYPE_SAVINGS,
-                Balance = 9876.50d,
-                Status = Account.STATUS_FROZEN
-            };
+            Assert.That(Account.TYPE_CHECKING, Is.EqualTo("CHECKING"));
+            Assert.That(Account.TYPE_SAVINGS, Is.EqualTo("SAVINGS"));
+            Assert.That(Account.STATUS_ACTIVE, Is.EqualTo("ACTIVE"));
+            Assert.That(Account.STATUS_FROZEN, Is.EqualTo("FROZEN"));
+        });
+    }
 
-            Assert.Multiple(() =>
-            {
-                Assert.That(account.Id, Is.EqualTo(202));
-                Assert.That(account.Owner, Is.EqualTo("John Smith"));
-                Assert.That(account.Type, Is.EqualTo(Account.TYPE_SAVINGS));
-                Assert.That(account.Balance, Is.EqualTo(9876.50d));
-                Assert.That(account.Status, Is.EqualTo(Account.STATUS_FROZEN));
-            });
-        }
+    [Test]
+    [SetCulture("en-US")]
+    public void ToString_ShouldReturnExpectedFormat()
+    {
+        var account = new Account(
+            id: 303,
+            owner: "Alice Walker",
+            type: Account.TYPE_CHECKING,
+            balance: 123.45d,
+            status: Account.STATUS_ACTIVE);
 
-        [Test]
-        public void ToString_ShouldReturnExpectedFormat()
+        var result = account.ToString();
+
+        Assert.That(
+            result,
+            Is.EqualTo("Account[Id=303, Owner=Alice Walker, Type=CHECKING, Balance=123.45]"));
+    }
+
+    [Test]
+    [SetCulture("en-US")]
+    public void ToString_ShouldReflectUpdatedPropertyValues()
+    {
+        var account = new Account();
+
+        account.Id = 404;
+        account.Owner = "Updated Owner";
+        account.Type = Account.TYPE_SAVINGS;
+        account.Balance = 456.78d;
+        account.Status = Account.STATUS_FROZEN;
+
+        var result = account.ToString();
+
+        Assert.That(
+            result,
+            Is.EqualTo("Account[Id=404, Owner=Updated Owner, Type=SAVINGS, Balance=456.78]"));
+    }
+
+    [Test]
+    [SetCulture("en-US")]
+    public void ToString_ShouldNotIncludeStatus()
+    {
+        var account = new Account(
+            id: 505,
+            owner: "Status Hidden",
+            type: Account.TYPE_CHECKING,
+            balance: 10.0d,
+            status: Account.STATUS_FROZEN);
+
+        var result = account.ToString();
+
+        Assert.Multiple(() =>
         {
-            const int id = 303;
-            const string owner = "Alice Johnson";
-            const string type = Account.TYPE_CHECKING;
-            const double balance = 123.45d;
-            const string status = Account.STATUS_ACTIVE;
+            Assert.That(result, Does.Not.Contain(Account.STATUS_FROZEN));
+            Assert.That(result, Does.Not.Contain("Status"));
+            Assert.That(result, Is.EqualTo("Account[Id=505, Owner=Status Hidden, Type=CHECKING, Balance=10]"));
+        });
+    }
 
-            var account = new Account(id, owner, type, balance, status);
+    [Test]
+    public void Constructor_ShouldAllowNegativeBalance_WhenNoValidationExists()
+    {
+        var account = new Account(
+            id: 606,
+            owner: "Overdrawn Customer",
+            type: Account.TYPE_CHECKING,
+            balance: -25.50d,
+            status: Account.STATUS_ACTIVE);
 
-            var expected =
-                "Account[Id=" + id +
-                ", Owner=" + owner +
-                ", Type=" + type +
-                ", Balance=" + balance + "]";
+        Assert.That(account.Balance, Is.EqualTo(-25.50d));
+    }
 
-            var actual = account.ToString();
+    [Test]
+    public void Constructor_ShouldAllowUnknownTypeAndStatus_WhenNoValidationExists()
+    {
+        var account = new Account(
+            id: 707,
+            owner: "Flexible Customer",
+            type: "MONEY_MARKET",
+            balance: 1000.00d,
+            status: "PENDING_REVIEW");
 
-            Assert.That(actual, Is.EqualTo(expected));
-        }
-
-        [Test]
-        public void ToString_ShouldReflectUpdatedPropertyValues()
+        Assert.Multiple(() =>
         {
-            var account = new Account(1, "Initial Owner", Account.TYPE_CHECKING, 10.0d, Account.STATUS_ACTIVE)
-            {
-                Id = 404,
-                Owner = "Updated Owner",
-                Type = Account.TYPE_SAVINGS,
-                Balance = 4321.99d,
-                Status = Account.STATUS_FROZEN
-            };
+            Assert.That(account.Type, Is.EqualTo("MONEY_MARKET"));
+            Assert.That(account.Status, Is.EqualTo("PENDING_REVIEW"));
+        });
+    }
 
-            var expected =
-                "Account[Id=" + account.Id +
-                ", Owner=" + account.Owner +
-                ", Type=" + account.Type +
-                ", Balance=" + account.Balance + "]";
+    [Test]
+    public void Properties_ShouldAllowNullStringValues_WhenNoValidationExists()
+    {
+        var account = new Account(
+            id: 808,
+            owner: "Temporary Owner",
+            type: Account.TYPE_SAVINGS,
+            balance: 50.00d,
+            status: Account.STATUS_ACTIVE);
 
-            var actual = account.ToString();
+        account.Owner = null!;
+        account.Type = null!;
+        account.Status = null!;
 
-            Assert.That(actual, Is.EqualTo(expected));
-        }
-
-        [Test]
-        public void ToString_ShouldNotIncludeStatusBasedOnCurrentImplementation()
+        Assert.Multiple(() =>
         {
-            var account = new Account(
-                id: 505,
-                owner: "Frozen Account Owner",
-                type: Account.TYPE_SAVINGS,
-                balance: 1000.0d,
-                status: Account.STATUS_FROZEN);
+            Assert.That(account.Owner, Is.Null);
+            Assert.That(account.Type, Is.Null);
+            Assert.That(account.Status, Is.Null);
+        });
+    }
 
-            var actual = account.ToString();
+    [Test]
+    [SetCulture("en-US")]
+    public void ToString_ShouldHandleNullStringProperties_UsingCurrentImplementation()
+    {
+        var account = new Account(
+            id: 909,
+            owner: null!,
+            type: null!,
+            balance: 0.0d,
+            status: null!);
 
-            Assert.Multiple(() =>
-            {
-                Assert.That(actual, Does.Not.Contain("Status="));
-                Assert.That(actual, Does.Not.Contain(Account.STATUS_FROZEN));
-            });
-        }
+        var result = account.ToString();
+
+        Assert.That(
+            result,
+            Is.EqualTo("Account[Id=909, Owner=, Type=, Balance=0]"));
     }
 }
