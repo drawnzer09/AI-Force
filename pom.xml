@@ -12,14 +12,13 @@
     </parent>
 
     <groupId>com.example</groupId>
-    <artifactId>temperature-service</artifactId>
+    <artifactId>temperature-time-series-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>temperature-service</name>
-    <description>Temperature time-series ingestion and query API</description>
+    <name>Temperature Time-Series Data Service</name>
+    <description>Spring Boot API for ingesting and querying temperature time-series records.</description>
 
     <properties>
         <java.version>17</java.version>
-        <testcontainers.version>1.20.3</testcontainers.version>
     </properties>
 
     <dependencies>
@@ -53,6 +52,10 @@
             <scope>runtime</scope>
         </dependency>
         <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
@@ -68,18 +71,6 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.testcontainers</groupId>
-                <artifactId>testcontainers-bom</artifactId>
-                <version>${testcontainers.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <build>
         <plugins>
