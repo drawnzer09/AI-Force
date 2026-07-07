@@ -6,45 +6,49 @@ server:
 
 spring:
   application:
-    name: temperature-service
+    name: temperature-time-series-service
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/temperature}
-    username: ${DATABASE_USERNAME:temperature}
-    password: ${DATABASE_PASSWORD:temperature}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/temperature}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
-  flyway:
-    enabled: ${FLYWAY_ENABLED:true}
-    locations: ${FLYWAY_LOCATIONS:classpath:db/migration}
+    hikari:
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:10}
+      minimum-idle: ${DB_MIN_IDLE:2}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:30000}
   jpa:
-    open-in-view: false
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:validate}
+      ddl-auto: validate
+    open-in-view: false
     properties:
       hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
         jdbc:
-          time_zone: ${JPA_JDBC_TIME_ZONE:UTC}
-        format_sql: ${JPA_FORMAT_SQL:false}
-    show-sql: ${JPA_SHOW_SQL:false}
+          time_zone: UTC
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-request-size: ${MAX_REQUEST_SIZE:2MB}
+      max-file-size: ${MAX_FILE_SIZE:2MB}
   mvc:
     throw-exception-if-no-handler-found: true
   web:
     resources:
       add-mappings: false
-  servlet:
-    multipart:
-      max-file-size: ${MAX_FILE_SIZE:10MB}
-      max-request-size: ${MAX_REQUEST_SIZE:10MB}
 
 management:
   endpoints:
     web:
       exposure:
-        include: ${ACTUATOR_ENDPOINTS:health,info}
+        include: health
   endpoint:
     health:
       probes:
         enabled: true
+      show-details: never
 
 logging:
   level:
-    com.example.temperature: ${APPLICATION_LOG_LEVEL:INFO}
+    com.example.temperature: ${APP_LOG_LEVEL:INFO}
