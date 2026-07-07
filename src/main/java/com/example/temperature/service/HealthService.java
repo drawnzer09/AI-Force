@@ -1,26 +1,33 @@
 package com.example.temperature.service;
 
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.boot.actuate.health.HealthComponent;
-import org.springframework.boot.actuate.health.HealthEndpoint;
-import org.springframework.boot.actuate.health.Status;
+import com.example.temperature.dto.response.HealthResponse;
 import org.springframework.stereotype.Service;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
 
 @Service
 public class HealthService {
 
-    private final ObjectProvider<HealthEndpoint> healthEndpointProvider;
+    private final DataSource dataSource;
 
-    public HealthService(ObjectProvider<HealthEndpoint> healthEndpointProvider) {
-        this.healthEndpointProvider = healthEndpointProvider;
+    public HealthService(DataSource dataSource) {
+        this.dataSource = dataSource;
     }
 
-    public boolean isReady() {
-        HealthEndpoint healthEndpoint = healthEndpointProvider.getIfAvailable();
-        if (healthEndpoint == null) {
-            return true;
+    public HealthResponse health() {
+        if (isDatabaseConnected()) {
+            return new HealthResponse("healthy", "connected");
         }
-        HealthComponent health = healthEndpoint.health();
-        return Status.UP.equals(health.getStatus());
+        return new HealthResponse("unhealthy", "unavailable");
+    }
+
+    private boolean isDatabaseConnected() {
+        try (Connection connection = dataSource.getConnection()) {
+            return connection.isValid(2);
+        } catch (SQLException ex) {
+            return false;
+        }
     }
 }
