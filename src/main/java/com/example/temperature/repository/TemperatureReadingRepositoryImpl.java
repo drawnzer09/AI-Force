@@ -1,94 +1,82 @@
 package com.example.temperature.repository;
 
-import com.example.temperature.persistence.TemperatureReadingRow;
+import com.example.temperature.entity.TemperatureReadingEntity;
+import com.example.temperature.validation.SortOrder;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.Query;
-import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.List;
 
 @Repository
-public class TemperatureReadingRepositoryImpl implements TemperatureReadingRepository {
+public class TemperatureReadingRepositoryImpl implements TemperatureReadingRepositoryCustom {
 
     @PersistenceContext
     private EntityManager entityManager;
 
     @Override
-    public int saveAll(List<TemperatureReadingRow> rows) {
-        int inserted = 0;
-        for (TemperatureReadingRow row : rows) {
-            inserted += entityManager.createNativeQuery("""
-                            INSERT INTO temperature_readings (reading_timestamp, temperature)
-                            VALUES (:readingTimestamp, :temperature)
+    public void insertAll(List<TemperatureReadingEntity> readings) {
+        for (TemperatureReadingEntity reading : readings) {
+            entityManager.createNativeQuery("""
+                            INSERT INTO temperature_readings (reading_timestamp, temperature_value)
+                            VALUES (:readingTimestamp, :temperatureValue)
                             """)
-                    .setParameter("readingTimestamp", row.timestamp())
-                    .setParameter("temperature", row.temperature())
+                    .setParameter("readingTimestamp", reading.getReadingTimestamp())
+                    .setParameter("temperatureValue", reading.getTemperatureValue())
                     .executeUpdate();
         }
-        return inserted;
     }
 
     @Override
-    public List<TemperatureReadingRow> findByTimestampRange(OffsetDateTime fromTimestamp,
-                                                            OffsetDateTime toTimestamp,
-                                                            int limit,
-                                                            int offset) {
-        StringBuilder sql = new StringBuilder("""
-                SELECT reading_timestamp, temperature
-                FROM temperature_readings
-                WHERE 1 = 1
-                """);
-        if (fromTimestamp != null) {
-            sql.append(" AND reading_timestamp >= :fromTimestamp");
-        }
-        if (toTimestamp != null) {
-            sql.append(" AND reading_timestamp <= :toTimestamp");
-        }
-        sql.append(" ORDER BY reading_timestamp ASC LIMIT :limit OFFSET :offset");
-
-        Query query = entityManager.createNativeQuery(sql.toString());
-        if (fromTimestamp != null) {
-            query.setParameter("fromTimestamp", fromTimestamp);
-        }
-        if (toTimestamp != null) {
-            query.setParameter("toTimestamp", toTimestamp);
-        }
-        query.setParameter("limit", limit);
-        query.setParameter("offset", offset);
-
+    public List<TemperatureReadingEntity> findByTimestampRange(
+            OffsetDateTime startTime,
+            OffsetDateTime endTime,
+            int limit,
+            int offset,
+            SortOrder sortOrder
+    ) {
+        String direction = sortOrder == SortOrder.TIMESTAMP_DESC ? "DESC" : "ASC";
         @SuppressWarnings("unchecked")
-        List<Object[]> results = query.getResultList();
-        List<TemperatureReadingRow> rows = new ArrayList<>(results.size());
-        for (Object[] result : results) {
-            rows.add(new TemperatureReadingRow(toOffsetDateTime(result[0]), (BigDecimal) result[1]));
-        }
-        return rows;
+        List<Object[]> rows = entityManager.createNativeQuery("""
+                        SELECT reading_timestamp, temperature_value
+                        FROM temperature_readings
+                        WHERE reading_timestamp >= :startTime
+                          AND reading_timestamp <= :endTime
+                        ORDER BY reading_timestamp %s
+                        LIMIT :limit OFFSET :offset
+                        """.formatted(direction))
+                .setParameter("startTime", startTime)
+                .setParameter("endTime", endTime)
+                .setParameter("limit", limit)
+                .setParameter("offset", offset)
+                .getResultList();
+
+        return rows.stream()
+                .map(row -> new TemperatureReadingEntity(toOffsetDateTime(row[0]), (BigDecimal) row[1]))
+                .toList();
     }
 
     @Override
-    public boolean isAvailable() {
-        try {
-            Object result = entityManager.createNativeQuery("SELECT 1").getSingleResult();
-            return result != null;
-        } catch (RuntimeException ex) {
-            throw new DataAccessResourceFailureException("PostgreSQL availability check failed", ex);
-        }
+    public long countByTimestampRange(OffsetDateTime startTime, OffsetDateTime endTime) {
+        Number count = (Number) entityManager.createNativeQuery("""
+                        SELECT COUNT(*)
+                        FROM temperature_readings
+                        WHERE reading_timestamp >= :startTime
+                          AND reading_timestamp <= :endTime
+                        """)
+                .setParameter("startTime", startTime)
+                .setParameter("endTime", endTime)
+                .getSingleResult();
+        return count.longValue();
     }
 
     private OffsetDateTime toOffsetDateTime(Object value) {
         if (value instanceof OffsetDateTime offsetDateTime) {
             return offsetDateTime;
-        }
-        if (value instanceof Instant instant) {
-            return instant.atOffset(ZoneOffset.UTC);
         }
         if (value instanceof Timestamp timestamp) {
             return timestamp.toInstant().atOffset(ZoneOffset.UTC);
