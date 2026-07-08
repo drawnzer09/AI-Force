@@ -1,111 +1,186 @@
 package com.example.temperature.exception;
 
-import com.example.temperature.dto.error.ErrorBody;
-import com.example.temperature.dto.error.ErrorDetail;
-import com.example.temperature.dto.error.ErrorEnvelope;
-import jakarta.servlet.http.HttpServletRequest;
+import com.example.temperature.dto.ErrorDetailDto;
+import com.example.temperature.dto.ErrorResponseDto;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.TypeMismatchException;
+import org.springframework.core.convert.ConversionFailedException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
-import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-
-    @ExceptionHandler(BadRequestException.class)
-    public ResponseEntity<ErrorEnvelope> handleBadRequest(BadRequestException ex) {
-        List<ErrorDetail> details = ex.getFieldErrors().stream()
-                .map(error -> new ErrorDetail(error.field(), error.message()))
-                .toList();
-        return error(HttpStatus.BAD_REQUEST, "BAD_REQUEST", ex.getMessage(), details);
-    }
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorEnvelope> handleValidation(MethodArgumentNotValidException ex) {
-        List<ErrorDetail> details = new ArrayList<>();
-        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
-            details.add(new ErrorDetail(fieldError.getField(), fieldError.getDefaultMessage()));
+    public ResponseEntity<ErrorResponseDto> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
+        List<ErrorDetailDto> details = ex.getBindingResult().getFieldErrors().stream()
+                .sorted(Comparator.comparing(FieldError::getField))
+                .map(fieldError -> new ErrorDetailDto(fieldError.getField(), resolveFieldErrorIssue(fieldError)))
+                .toList();
+
+        boolean payloadTooLarge = ex.getBindingResult().getFieldErrors().stream()
+                .anyMatch(this::isRecordsTooLargeError);
+
+        if (payloadTooLarge) {
+            return build(HttpStatus.PAYLOAD_TOO_LARGE,
+                    "PAYLOAD_TOO_LARGE",
+                    "Submitted batch exceeds accepted size",
+                    details);
         }
-        return error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Request validation failed", details);
+
+        return build(HttpStatus.BAD_REQUEST,
+                "INVALID_REQUEST",
+                "Request validation failed",
+                details);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponseDto> handleConstraintViolation(ConstraintViolationException ex) {
+        List<ErrorDetailDto> details = ex.getConstraintViolations().stream()
+                .sorted(Comparator.comparing(violation -> violation.getPropertyPath().toString()))
+                .map(this::toDetail)
+                .toList();
+
+        return build(HttpStatus.BAD_REQUEST,
+                "INVALID_REQUEST",
+                "Request validation failed",
+                details);
     }
 
     @ExceptionHandler({
             HttpMessageNotReadableException.class,
             MethodArgumentTypeMismatchException.class,
-            TypeMismatchException.class,
+            ConversionFailedException.class,
             MissingServletRequestParameterException.class,
-            ConstraintViolationException.class
+            InvalidTimestampRangeException.class
     })
-    public ResponseEntity<ErrorEnvelope> handleMalformedRequest(Exception ex) {
-        return error(HttpStatus.BAD_REQUEST, "BAD_REQUEST", "Malformed or invalid request", List.of(new ErrorDetail(null, rootMessage(ex))));
+    public ResponseEntity<ErrorResponseDto> handleBadRequest(Exception ex) {
+        return build(HttpStatus.BAD_REQUEST,
+                "INVALID_REQUEST",
+                "Invalid request syntax, parameters, or body",
+                List.of(new ErrorDetailDto(resolveField(ex), resolveIssue(ex))));
     }
 
-    @ExceptionHandler(NoHandlerFoundException.class)
-    public ResponseEntity<ErrorEnvelope> handleNotFound(NoHandlerFoundException ex) {
-        return error(HttpStatus.NOT_FOUND, "NOT_FOUND", "The requested path does not exist", List.of(new ErrorDetail("path", ex.getRequestURL())));
-    }
-
-    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public ResponseEntity<ErrorEnvelope> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex) {
-        return error(HttpStatus.METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED", "HTTP method is not supported for this path", List.of(new ErrorDetail("method", ex.getMethod())));
-    }
-
-    @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<ErrorEnvelope> handlePayloadTooLarge(MaxUploadSizeExceededException ex) {
-        return error(HttpStatus.PAYLOAD_TOO_LARGE, "PAYLOAD_TOO_LARGE", "Request payload is too large", List.of());
+    @ExceptionHandler(PayloadTooLargeException.class)
+    public ResponseEntity<ErrorResponseDto> handlePayloadTooLarge(PayloadTooLargeException ex) {
+        return build(HttpStatus.PAYLOAD_TOO_LARGE,
+                "PAYLOAD_TOO_LARGE",
+                "Submitted batch exceeds accepted size",
+                List.of(new ErrorDetailDto("records", ex.getMessage())));
     }
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
-    public ResponseEntity<ErrorEnvelope> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex) {
-        return error(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_MEDIA_TYPE", "Request content type is not supported", List.of(new ErrorDetail("Content-Type", String.valueOf(ex.getContentType()))));
+    public ResponseEntity<ErrorResponseDto> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex) {
+        return build(HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                "UNSUPPORTED_MEDIA_TYPE",
+                "Request content type is unsupported",
+                List.of(new ErrorDetailDto("Content-Type", ex.getMessage())));
     }
 
-    @ExceptionHandler({PersistenceUnavailableException.class, DataAccessException.class})
-    public ResponseEntity<ErrorEnvelope> handlePersistence(Exception ex) {
-        LOGGER.error("Persistence error", ex);
-        return error(HttpStatus.SERVICE_UNAVAILABLE, "PERSISTENCE_UNAVAILABLE", "Persistence connectivity is unavailable", List.of());
+    @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
+    public ResponseEntity<ErrorResponseDto> handleNotFound(Exception ex) {
+        return build(HttpStatus.NOT_FOUND,
+                "NOT_FOUND",
+                "Requested endpoint does not exist",
+                List.of());
     }
 
-    @ExceptionHandler(AsyncRequestNotUsableException.class)
-    public void handleDisconnectedClient(AsyncRequestNotUsableException ex) {
-        LOGGER.debug("Client disconnected before response could be written", ex);
+    @ExceptionHandler(PersistenceUnavailableException.class)
+    public ResponseEntity<ErrorResponseDto> handlePersistenceUnavailable(PersistenceUnavailableException ex) {
+        log.warn("Persistence unavailable", ex);
+        return build(HttpStatus.SERVICE_UNAVAILABLE,
+                "SERVICE_UNAVAILABLE",
+                "Service is temporarily unable to serve requests",
+                List.of(new ErrorDetailDto(null, ex.getMessage())));
+    }
+
+    @ExceptionHandler(DataAccessException.class)
+    public ResponseEntity<ErrorResponseDto> handleDataAccess(DataAccessException ex) {
+        log.error("Persistence failure", ex);
+        return build(HttpStatus.INTERNAL_SERVER_ERROR,
+                "INTERNAL_SERVER_ERROR",
+                "Unexpected service failure",
+                List.of());
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorEnvelope> handleUnexpected(Exception ex, HttpServletRequest request) {
-        LOGGER.error("Unexpected error while handling {} {}", request.getMethod(), request.getRequestURI(), ex);
-        return error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "An unexpected server error occurred", List.of());
+    public ResponseEntity<ErrorResponseDto> handleUnexpected(Exception ex) {
+        log.error("Unexpected request failure", ex);
+        return build(HttpStatus.INTERNAL_SERVER_ERROR,
+                "INTERNAL_SERVER_ERROR",
+                "Unexpected service failure",
+                List.of());
     }
 
-    private ResponseEntity<ErrorEnvelope> error(HttpStatus status, String code, String message, List<ErrorDetail> details) {
-        return ResponseEntity.status(status).body(new ErrorEnvelope(new ErrorBody(code, message, details)));
+    private ErrorDetailDto toDetail(ConstraintViolation<?> violation) {
+        return new ErrorDetailDto(leafPropertyName(violation.getPropertyPath().toString()), violation.getMessage());
     }
 
-    private String rootMessage(Exception ex) {
-        Throwable current = ex;
-        while (current.getCause() != null) {
-            current = current.getCause();
+    private String resolveFieldErrorIssue(FieldError fieldError) {
+        return fieldError.getDefaultMessage() == null ? "invalid value" : fieldError.getDefaultMessage();
+    }
+
+    private boolean isRecordsTooLargeError(FieldError fieldError) {
+        Object rejectedValue = fieldError.getRejectedValue();
+        return "records".equals(fieldError.getField())
+                && "Size".equals(fieldError.getCode())
+                && rejectedValue instanceof List<?> list
+                && list.size() > 1000;
+    }
+
+    private String resolveField(Exception ex) {
+        if (ex instanceof MethodArgumentTypeMismatchException mismatchException) {
+            return mismatchException.getName();
         }
-        return current.getMessage() == null ? ex.getMessage() : current.getMessage();
+        if (ex instanceof MissingServletRequestParameterException missingParameterException) {
+            return missingParameterException.getParameterName();
+        }
+        if (ex instanceof InvalidTimestampRangeException) {
+            return "fromTimestamp";
+        }
+        return null;
+    }
+
+    private String resolveIssue(Exception ex) {
+        if (ex instanceof InvalidTimestampRangeException) {
+            return ex.getMessage();
+        }
+        if (ex instanceof MethodArgumentTypeMismatchException mismatchException) {
+            return "invalid value for parameter " + mismatchException.getName();
+        }
+        if (ex instanceof HttpMessageNotReadableException) {
+            return "malformed JSON or invalid field value";
+        }
+        return ex.getMessage() == null ? "invalid request" : ex.getMessage();
+    }
+
+    private String leafPropertyName(String propertyPath) {
+        int lastDot = propertyPath.lastIndexOf('.');
+        return lastDot >= 0 ? propertyPath.substring(lastDot + 1) : propertyPath;
+    }
+
+    private ResponseEntity<ErrorResponseDto> build(HttpStatus status,
+                                                   String code,
+                                                   String message,
+                                                   List<ErrorDetailDto> details) {
+        return ResponseEntity.status(status).body(ErrorResponseDto.of(code, message, details));
     }
 }
