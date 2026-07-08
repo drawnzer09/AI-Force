@@ -1,8 +1,7 @@
 package com.example.temperature.mapper;
 
-import com.example.temperature.dto.temperature.TemperatureReadingRequestDto;
-import com.example.temperature.dto.temperature.TemperatureReadingResponseDto;
-import com.example.temperature.persistence.TemperatureReadingRow;
+import com.example.temperature.dto.TemperatureDataPointDto;
+import com.example.temperature.entity.TemperatureReadingEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -10,19 +9,19 @@ import java.util.List;
 @Component
 public class TemperatureReadingMapper {
 
-    public TemperatureReadingRow toRow(TemperatureReadingRequestDto dto) {
-        return new TemperatureReadingRow(dto.timestamp(), dto.temperature());
+    public TemperatureReadingEntity toEntity(TemperatureDataPointDto dto) {
+        return new TemperatureReadingEntity(dto.timestamp(), dto.temperatureValue());
     }
 
-    public TemperatureReadingResponseDto toResponseDto(TemperatureReadingRow row) {
-        return new TemperatureReadingResponseDto(row.timestamp(), row.temperature());
+    public TemperatureDataPointDto toDto(TemperatureReadingEntity entity) {
+        return new TemperatureDataPointDto(entity.getReadingTimestamp(), entity.getTemperatureValue());
     }
 
-    public List<TemperatureReadingRow> toRows(List<TemperatureReadingRequestDto> dtos) {
-        return dtos.stream().map(this::toRow).toList();
+    public List<TemperatureReadingEntity> toEntities(List<TemperatureDataPointDto> dataPoints) {
+        return dataPoints.stream().map(this::toEntity).toList();
     }
 
-    public List<TemperatureReadingResponseDto> toResponseDtos(List<TemperatureReadingRow> rows) {
-        return rows.stream().map(this::toResponseDto).toList();
+    public List<TemperatureDataPointDto> toDtos(List<TemperatureReadingEntity> entities) {
+        return entities.stream().map(this::toDto).toList();
     }
 }
