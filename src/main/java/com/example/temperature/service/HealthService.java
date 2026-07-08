@@ -1,28 +1,21 @@
 package com.example.temperature.service;
 
-import com.example.temperature.exception.PersistenceUnavailableException;
-import com.example.temperature.repository.TemperatureReadingRepository;
-import org.springframework.dao.DataAccessException;
+import org.springframework.boot.actuate.health.HealthComponent;
+import org.springframework.boot.actuate.health.HealthEndpoint;
+import org.springframework.boot.actuate.health.Status;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class HealthService {
 
-    private final TemperatureReadingRepository repository;
+    private final HealthEndpoint healthEndpoint;
 
-    public HealthService(TemperatureReadingRepository repository) {
-        this.repository = repository;
+    public HealthService(HealthEndpoint healthEndpoint) {
+        this.healthEndpoint = healthEndpoint;
     }
 
-    @Transactional(readOnly = true)
-    public void verifyHealthy() {
-        try {
-            if (!repository.isAvailable()) {
-                throw new PersistenceUnavailableException("Persistence is unavailable");
-            }
-        } catch (DataAccessException ex) {
-            throw new PersistenceUnavailableException("Persistence is unavailable", ex);
-        }
+    public boolean isHealthy() {
+        HealthComponent health = healthEndpoint.health();
+        return Status.UP.equals(health.getStatus());
     }
 }
