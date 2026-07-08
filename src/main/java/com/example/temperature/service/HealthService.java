@@ -1,33 +1,28 @@
 package com.example.temperature.service;
 
-import com.example.temperature.dto.response.HealthResponse;
+import com.example.temperature.exception.PersistenceUnavailableException;
+import com.example.temperature.repository.TemperatureReadingRepository;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
-
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.SQLException;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class HealthService {
 
-    private final DataSource dataSource;
+    private final TemperatureReadingRepository repository;
 
-    public HealthService(DataSource dataSource) {
-        this.dataSource = dataSource;
+    public HealthService(TemperatureReadingRepository repository) {
+        this.repository = repository;
     }
 
-    public HealthResponse health() {
-        if (isDatabaseConnected()) {
-            return new HealthResponse("healthy", "connected");
-        }
-        return new HealthResponse("unhealthy", "unavailable");
-    }
-
-    private boolean isDatabaseConnected() {
-        try (Connection connection = dataSource.getConnection()) {
-            return connection.isValid(2);
-        } catch (SQLException ex) {
-            return false;
+    @Transactional(readOnly = true)
+    public void verifyHealthy() {
+        try {
+            if (!repository.isAvailable()) {
+                throw new PersistenceUnavailableException("Persistence is unavailable");
+            }
+        } catch (DataAccessException ex) {
+            throw new PersistenceUnavailableException("Persistence is unavailable", ex);
         }
     }
 }

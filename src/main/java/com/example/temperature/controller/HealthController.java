@@ -1,10 +1,8 @@
 package com.example.temperature.controller;
 
-import com.example.temperature.dto.response.HealthResponse;
+import com.example.temperature.dto.HealthResponseDto;
 import com.example.temperature.service.HealthService;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,9 +18,8 @@ public class HealthController {
     }
 
     @GetMapping
-    public ResponseEntity<HealthResponse> health() {
-        HealthResponse response = healthService.health();
-        HttpStatus status = "healthy".equals(response.status()) ? HttpStatus.OK : HttpStatus.SERVICE_UNAVAILABLE;
-        return ResponseEntity.status(status).body(response);
+    public HealthResponseDto health() {
+        healthService.verifyHealthy();
+        return new HealthResponseDto("UP");
     }
 }
