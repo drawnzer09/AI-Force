@@ -7,7 +7,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -73,10 +72,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             WebRequest request
     ) {
         List<ErrorDetailResponse> details = new ArrayList<>();
+        boolean payloadTooLarge = false;
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             details.add(new ErrorDetailResponse(fieldError.getField(), fieldError.getDefaultMessage()));
+            if ("dataPoints".equals(fieldError.getField()) && "Size".equals(fieldError.getCode())) {
+                payloadTooLarge = true;
+            }
         }
-        return buildObject(ErrorCode.INVALID_REQUEST, "Request validation failed", details);
+        ErrorCode code = payloadTooLarge ? ErrorCode.PAYLOAD_TOO_LARGE : ErrorCode.INVALID_REQUEST;
+        String message = payloadTooLarge ? "Batch exceeds allowed size" : "Request validation failed";
+        return buildObject(code, message, details);
     }
 
     @Override
