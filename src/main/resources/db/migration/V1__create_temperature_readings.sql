@@ -1,10 +1,8 @@
 CREATE TABLE temperature_readings (
-    reading_timestamp timestamptz NOT NULL,
-    temperature numeric NOT NULL,
-    CONSTRAINT temperature_readings_temperature_finite_chk
-        CHECK (temperature::text NOT IN ('NaN', 'Infinity', '-Infinity'))
+    reading_timestamp TIMESTAMPTZ NOT NULL,
+    temperature_value NUMERIC NOT NULL
 );
 
-CREATE INDEX temperature_readings_timestamp_idx
-    ON temperature_readings (reading_timestamp ASC)
-    INCLUDE (temperature);
+CREATE INDEX idx_temperature_readings_timestamp
+    ON temperature_readings (reading_timestamp)
+    INCLUDE (temperature_value);
