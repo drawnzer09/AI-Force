@@ -11,8 +11,7 @@ public class JacksonConfig {
 
     @Bean
     public Jackson2ObjectMapperBuilderCustomizer javaTimeCustomizer() {
-        return builder -> builder
-                .modules(new JavaTimeModule())
+        return builder -> builder.modules(new JavaTimeModule())
                 .featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 }
