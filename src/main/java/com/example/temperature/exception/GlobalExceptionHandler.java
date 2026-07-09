@@ -7,7 +7,7 @@ import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.convert.ConversionFailedException;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 @RestControllerAdvice
@@ -30,100 +31,164 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @ExceptionHandler(InvalidRequestException.class)
+    public ResponseEntity<ErrorEnvelope> handleInvalidRequest(InvalidRequestException exception) {
+        HttpStatus status = exception.isPayloadTooLarge() ? HttpStatus.PAYLOAD_TOO_LARGE : HttpStatus.UNPROCESSABLE_ENTITY;
+        ValidationErrorCode code = exception.isPayloadTooLarge()
+                ? ValidationErrorCode.PAYLOAD_TOO_LARGE
+                : ValidationErrorCode.VALIDATION_FAILED;
+        List<ErrorDetail> details = exception.getFieldIssues().stream()
+                .map(issue -> new ErrorDetail(issue.field(), issue.issue()))
+                .toList();
+        return build(status, code, exception.getMessage(), details);
+    }
+
+    @ExceptionHandler(InvalidQueryParameterException.class)
+    public ResponseEntity<ErrorEnvelope> handleInvalidQueryParameter(InvalidQueryParameterException exception) {
+        List<ErrorDetail> details = exception.getFieldIssues().stream()
+                .map(issue -> new ErrorDetail(issue.field(), issue.issue()))
+                .toList();
+        return build(HttpStatus.BAD_REQUEST, ValidationErrorCode.BAD_REQUEST, exception.getMessage(), details);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorEnvelope> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException exception) {
+        String field = exception.getName();
+        String issue = "parameter has an invalid value";
+        return build(
+                HttpStatus.BAD_REQUEST,
+                ValidationErrorCode.BAD_REQUEST,
+                "Invalid request parameter",
+                List.of(new ErrorDetail(field, issue))
+        );
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorEnvelope> handleConstraintViolation(ConstraintViolationException exception) {
+        List<ErrorDetail> details = exception.getConstraintViolations().stream()
+                .map(violation -> new ErrorDetail(violation.getPropertyPath().toString(), violation.getMessage()))
+                .toList();
+        return build(HttpStatus.UNPROCESSABLE_ENTITY, ValidationErrorCode.VALIDATION_FAILED, "Request validation failed", details);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorEnvelope> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException exception) {
+        return build(
+                HttpStatus.PAYLOAD_TOO_LARGE,
+                ValidationErrorCode.PAYLOAD_TOO_LARGE,
+                "Request payload is too large",
+                List.of()
+        );
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorEnvelope> handleDataIntegrityViolation(DataIntegrityViolationException exception) {
+        log.warn("Database integrity validation failed", exception);
+        return build(
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                ValidationErrorCode.VALIDATION_FAILED,
+                "Request validation failed",
+                List.of(new ErrorDetail("request", "submitted data violates persistence constraints"))
+        );
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorEnvelope> handleUnexpected(Exception exception) {
+        log.error("Unexpected service error", exception);
+        return build(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                ValidationErrorCode.INTERNAL_SERVER_ERROR,
+                "An unexpected service error occurred",
+                List.of()
+        );
+    }
+
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
-            MethodArgumentNotValidException ex,
+            MethodArgumentNotValidException exception,
             HttpHeaders headers,
             HttpStatusCode status,
             WebRequest request
     ) {
-        List<ErrorDetail> details = ex.getBindingResult().getAllErrors().stream()
+        List<ErrorDetail> details = exception.getBindingResult().getAllErrors().stream()
                 .map(error -> {
                     String field = error instanceof FieldError fieldError ? fieldError.getField() : error.getObjectName();
-                    String issue = error.getDefaultMessage() == null ? "invalid value" : error.getDefaultMessage();
+                    String issue = DefaultMessageSourceResolvable.class.isAssignableFrom(error.getClass())
+                            ? error.getDefaultMessage()
+                            : "invalid value";
                     return new ErrorDetail(field, issue);
                 })
                 .toList();
-        return error(HttpStatus.UNPROCESSABLE_ENTITY, ValidationErrorCode.VALIDATION_ERROR.name(), "Request validation failed", details);
+        return asObject(build(HttpStatus.UNPROCESSABLE_ENTITY, ValidationErrorCode.VALIDATION_FAILED, "Request validation failed", details));
     }
 
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(
-            HttpMessageNotReadableException ex,
+            HttpMessageNotReadableException exception,
             HttpHeaders headers,
             HttpStatusCode status,
             WebRequest request
     ) {
-        return error(HttpStatus.BAD_REQUEST, ValidationErrorCode.BAD_REQUEST.name(), "Request JSON is malformed or contains invalid values", List.of());
+        return asObject(build(
+                HttpStatus.BAD_REQUEST,
+                ValidationErrorCode.BAD_REQUEST,
+                "Request JSON is malformed or contains invalid values",
+                List.of(new ErrorDetail("body", "request body could not be parsed"))
+        ));
     }
 
     @Override
     protected ResponseEntity<Object> handleMissingServletRequestParameter(
-            MissingServletRequestParameterException ex,
+            MissingServletRequestParameterException exception,
             HttpHeaders headers,
             HttpStatusCode status,
             WebRequest request
     ) {
-        return error(HttpStatus.BAD_REQUEST, ValidationErrorCode.BAD_REQUEST.name(), "Required query parameter is missing", List.of(new ErrorDetail(ex.getParameterName(), "parameter is required")));
+        return asObject(build(
+                HttpStatus.BAD_REQUEST,
+                ValidationErrorCode.BAD_REQUEST,
+                "Missing required query parameter",
+                List.of(new ErrorDetail(exception.getParameterName(), "parameter is required"))
+        ));
     }
 
     @Override
     protected ResponseEntity<Object> handleHttpMediaTypeNotSupported(
-            HttpMediaTypeNotSupportedException ex,
+            HttpMediaTypeNotSupportedException exception,
             HttpHeaders headers,
             HttpStatusCode status,
             WebRequest request
     ) {
-        return error(HttpStatus.UNSUPPORTED_MEDIA_TYPE, ValidationErrorCode.UNSUPPORTED_MEDIA_TYPE.name(), "Unsupported media type", List.of());
+        return asObject(build(
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+                ValidationErrorCode.UNSUPPORTED_MEDIA_TYPE,
+                "Unsupported media type",
+                List.of(new ErrorDetail("Content-Type", "supported media type is application/json"))
+        ));
     }
 
     @Override
     protected ResponseEntity<Object> handleHttpRequestMethodNotSupported(
-            HttpRequestMethodNotSupportedException ex,
+            HttpRequestMethodNotSupportedException exception,
             HttpHeaders headers,
             HttpStatusCode status,
             WebRequest request
     ) {
-        return error(HttpStatus.METHOD_NOT_ALLOWED, ValidationErrorCode.METHOD_NOT_ALLOWED.name(), "HTTP method is not supported for this path", List.of());
+        return asObject(build(
+                HttpStatus.METHOD_NOT_ALLOWED,
+                ValidationErrorCode.METHOD_NOT_ALLOWED,
+                "HTTP method is not supported for this resource",
+                List.of(new ErrorDetail("method", "unsupported method " + exception.getMethod()))
+        ));
     }
 
-    @ExceptionHandler(InvalidRequestException.class)
-    public ResponseEntity<Object> handleInvalidRequest(InvalidRequestException ex) {
-        List<ErrorDetail> details = ex.getIssues().stream()
-                .map(issue -> new ErrorDetail(issue.field(), issue.issue()))
-                .toList();
-        if (ex.isPayloadTooLarge()) {
-            return error(HttpStatus.PAYLOAD_TOO_LARGE, ValidationErrorCode.PAYLOAD_TOO_LARGE.name(), ex.getMessage(), details);
-        }
-        return error(HttpStatus.UNPROCESSABLE_ENTITY, ValidationErrorCode.VALIDATION_ERROR.name(), ex.getMessage(), details);
+    private ResponseEntity<ErrorEnvelope> build(HttpStatus status, ValidationErrorCode code, String message, List<ErrorDetail> details) {
+        ErrorBody body = new ErrorBody(code.name(), message, details == null ? List.of() : details);
+        return ResponseEntity.status(status).body(new ErrorEnvelope(body));
     }
 
-    @ExceptionHandler(InvalidQueryParameterException.class)
-    public ResponseEntity<Object> handleInvalidQueryParameter(InvalidQueryParameterException ex) {
-        List<ErrorDetail> details = ex.getIssues().stream()
-                .map(issue -> new ErrorDetail(issue.field(), issue.issue()))
-                .toList();
-        return error(HttpStatus.BAD_REQUEST, ValidationErrorCode.BAD_REQUEST.name(), ex.getMessage(), details);
-    }
-
-    @ExceptionHandler({MethodArgumentTypeMismatchException.class, ConversionFailedException.class, ConstraintViolationException.class})
-    public ResponseEntity<Object> handleBadRequest(Exception ex) {
-        return error(HttpStatus.BAD_REQUEST, ValidationErrorCode.BAD_REQUEST.name(), "Request parameters are invalid", List.of());
-    }
-
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<Object> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
-        log.warn("Data integrity violation", ex);
-        return error(HttpStatus.UNPROCESSABLE_ENTITY, ValidationErrorCode.VALIDATION_ERROR.name(), "Request violates persistence constraints", List.of());
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Object> handleUnexpected(Exception ex) {
-        log.error("Unexpected service error", ex);
-        return error(HttpStatus.INTERNAL_SERVER_ERROR, ValidationErrorCode.INTERNAL_ERROR.name(), "An unexpected service error occurred", List.of());
-    }
-
-    private ResponseEntity<Object> error(HttpStatus status, String code, String message, List<ErrorDetail> details) {
-        return ResponseEntity.status(status).body(new ErrorEnvelope(new ErrorBody(code, message, details)));
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private ResponseEntity<Object> asObject(ResponseEntity<ErrorEnvelope> response) {
+        return (ResponseEntity) response;
     }
 }
