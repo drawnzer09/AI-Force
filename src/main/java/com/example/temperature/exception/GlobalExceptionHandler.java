@@ -7,7 +7,6 @@ import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.core.convert.ConversionFailedException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
@@ -93,6 +92,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         List<ErrorDetail> details = ex.getIssues().stream()
                 .map(issue -> new ErrorDetail(issue.field(), issue.issue()))
                 .toList();
+        if (ex.isPayloadTooLarge()) {
+            return error(HttpStatus.PAYLOAD_TOO_LARGE, ValidationErrorCode.PAYLOAD_TOO_LARGE.name(), ex.getMessage(), details);
+        }
         return error(HttpStatus.UNPROCESSABLE_ENTITY, ValidationErrorCode.VALIDATION_ERROR.name(), ex.getMessage(), details);
     }
 
