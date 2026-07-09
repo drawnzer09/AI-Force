@@ -15,7 +15,6 @@ import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -64,7 +63,7 @@ public class TemperatureReadingServiceImpl implements TemperatureReadingService 
         int offset = timeRangeValidator.normalizedOffset(request);
         String sortValue = timeRangeValidator.normalizedSort(request);
         Sort.Direction direction = "-timestamp".equals(sortValue) ? Sort.Direction.DESC : Sort.Direction.ASC;
-        Pageable pageable = new OffsetLimitPageRequest(offset, limit, Sort.by(direction, "readingTimestamp").and(Sort.by(direction, "id")));
+        Pageable pageable = new OffsetLimitPageable(offset, limit, Sort.by(direction, "readingTimestamp").and(Sort.by(direction, "id")));
         Page<TemperatureReadingEntity> page = repository.findAll(specification(request), pageable);
         List<TemperatureReadingResponse> items = page.getContent().stream()
                 .map(mapper::toResponse)
@@ -88,21 +87,21 @@ public class TemperatureReadingServiceImpl implements TemperatureReadingService 
         };
     }
 
-    private static final class OffsetLimitPageRequest implements Pageable {
+    private static final class OffsetLimitPageable implements Pageable {
 
-        private final int offset;
+        private final long offset;
         private final int limit;
         private final Sort sort;
 
-        private OffsetLimitPageRequest(int offset, int limit, Sort sort) {
+        private OffsetLimitPageable(long offset, int limit, Sort sort) {
             this.offset = offset;
             this.limit = limit;
-            this.sort = sort;
+            this.sort = sort == null ? Sort.unsorted() : sort;
         }
 
         @Override
         public int getPageNumber() {
-            return offset / limit;
+            return Math.toIntExact(offset / limit);
         }
 
         @Override
@@ -122,18 +121,17 @@ public class TemperatureReadingServiceImpl implements TemperatureReadingService 
 
         @Override
         public Pageable next() {
-            return new OffsetLimitPageRequest(offset + limit, limit, sort);
+            return new OffsetLimitPageable(offset + limit, limit, sort);
         }
 
         @Override
         public Pageable previousOrFirst() {
-            int previousOffset = Math.max(offset - limit, 0);
-            return new OffsetLimitPageRequest(previousOffset, limit, sort);
+            return hasPrevious() ? new OffsetLimitPageable(Math.max(offset - limit, 0), limit, sort) : first();
         }
 
         @Override
         public Pageable first() {
-            return new OffsetLimitPageRequest(0, limit, sort);
+            return new OffsetLimitPageable(0, limit, sort);
         }
 
         @Override
@@ -141,7 +139,7 @@ public class TemperatureReadingServiceImpl implements TemperatureReadingService 
             if (pageNumber < 0) {
                 throw new IllegalArgumentException("Page index must not be less than zero");
             }
-            return new OffsetLimitPageRequest(pageNumber * limit, limit, sort);
+            return new OffsetLimitPageable((long) pageNumber * limit, limit, sort);
         }
 
         @Override
