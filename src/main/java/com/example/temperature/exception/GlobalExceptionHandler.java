@@ -7,7 +7,6 @@ import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -53,13 +52,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorEnvelope> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException exception) {
-        String field = exception.getName();
-        String issue = "parameter has an invalid value";
         return build(
                 HttpStatus.BAD_REQUEST,
                 ValidationErrorCode.BAD_REQUEST,
                 "Invalid request parameter",
-                List.of(new ErrorDetail(field, issue))
+                List.of(new ErrorDetail(exception.getName(), "parameter has an invalid value"))
         );
     }
 
@@ -113,9 +110,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         List<ErrorDetail> details = exception.getBindingResult().getAllErrors().stream()
                 .map(error -> {
                     String field = error instanceof FieldError fieldError ? fieldError.getField() : error.getObjectName();
-                    String issue = DefaultMessageSourceResolvable.class.isAssignableFrom(error.getClass())
-                            ? error.getDefaultMessage()
-                            : "invalid value";
+                    String issue = error.getDefaultMessage() == null ? "invalid value" : error.getDefaultMessage();
                     return new ErrorDetail(field, issue);
                 })
                 .toList();
