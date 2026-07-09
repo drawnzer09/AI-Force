@@ -1,10 +1,28 @@
 package com.example.temperature.dto.error;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+public class ErrorDetail {
 
-@JsonInclude(JsonInclude.Include.NON_NULL)
-public record ErrorDetail(
-        String field,
-        String message
-) {
+    private String field;
+    private String issue;
+
+    public ErrorDetail(String field, String issue) {
+        this.field = field;
+        this.issue = issue;
+    }
+
+    public String getField() {
+        return field;
+    }
+
+    public void setField(String field) {
+        this.field = field;
+    }
+
+    public String getIssue() {
+        return issue;
+    }
+
+    public void setIssue(String issue) {
+        this.issue = issue;
+    }
 }
