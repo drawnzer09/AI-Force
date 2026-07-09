@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class TemperatureReadingValidator {
 
+    private static final int MAX_BATCH_SIZE = 1000;
     private static final BigDecimal ABSOLUTE_ZERO_C = new BigDecimal("-273.15");
     private static final BigDecimal ABSOLUTE_ZERO_F = new BigDecimal("-459.67");
     private static final BigDecimal ABSOLUTE_ZERO_K = BigDecimal.ZERO;
@@ -19,6 +20,13 @@ public class TemperatureReadingValidator {
         if (readings == null) {
             issues.add(new InvalidRequestException.FieldIssue("readings", "readings is required"));
         } else {
+            if (readings.size() > MAX_BATCH_SIZE) {
+                throw new InvalidRequestException(
+                        "Ingestion batch exceeds maximum item count",
+                        List.of(new InvalidRequestException.FieldIssue("readings", "readings must contain at most 1000 items")),
+                        true
+                );
+            }
             for (int i = 0; i < readings.size(); i++) {
                 validateReading(readings.get(i), i, issues);
             }
