@@ -4,21 +4,21 @@ import java.util.List;
 
 public class InvalidRequestException extends RuntimeException {
 
-    private final List<FieldIssue> issues;
+    private final List<FieldIssue> fieldIssues;
     private final boolean payloadTooLarge;
 
-    public InvalidRequestException(String message, List<FieldIssue> issues) {
-        this(message, issues, false);
+    public InvalidRequestException(String message, List<FieldIssue> fieldIssues) {
+        this(message, fieldIssues, false);
     }
 
-    public InvalidRequestException(String message, List<FieldIssue> issues, boolean payloadTooLarge) {
+    public InvalidRequestException(String message, List<FieldIssue> fieldIssues, boolean payloadTooLarge) {
         super(message);
-        this.issues = List.copyOf(issues);
+        this.fieldIssues = fieldIssues == null ? List.of() : List.copyOf(fieldIssues);
         this.payloadTooLarge = payloadTooLarge;
     }
 
-    public List<FieldIssue> getIssues() {
-        return issues;
+    public List<FieldIssue> getFieldIssues() {
+        return fieldIssues;
     }
 
     public boolean isPayloadTooLarge() {
