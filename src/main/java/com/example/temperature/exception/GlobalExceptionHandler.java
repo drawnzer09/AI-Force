@@ -1,12 +1,17 @@
 package com.example.temperature.exception;
 
-import com.example.temperature.dto.ErrorDetailResponse;
-import com.example.temperature.dto.ErrorResponse;
+import com.example.temperature.dto.error.ErrorBody;
+import com.example.temperature.dto.error.ErrorDetail;
+import com.example.temperature.dto.error.ErrorEnvelope;
 import jakarta.validation.ConstraintViolationException;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataAccessException;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
+import org.springframework.core.convert.ConversionFailedException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -19,50 +24,12 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-
-    @ExceptionHandler(ApiException.class)
-    public ResponseEntity<ErrorResponse> handleApiException(ApiException ex) {
-        List<ErrorDetailResponse> details = ex.getField()
-                .map(field -> List.of(new ErrorDetailResponse(field, ex.getMessage())))
-                .orElseGet(List::of);
-        return build(ex.getErrorCode(), ex.getMessage(), details);
-    }
-
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
-        List<ErrorDetailResponse> details = ex.getConstraintViolations().stream()
-                .map(violation -> new ErrorDetailResponse(lastPathSegment(violation.getPropertyPath().toString()), violation.getMessage()))
-                .toList();
-        return build(ErrorCode.INVALID_REQUEST, "Request validation failed", details);
-    }
-
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        String message = "Invalid value for parameter " + ex.getName();
-        return build(ErrorCode.INVALID_REQUEST, message, List.of(new ErrorDetailResponse(ex.getName(), message)));
-    }
-
-    @ExceptionHandler(DataAccessException.class)
-    public ResponseEntity<ErrorResponse> handleDataAccess(DataAccessException ex) {
-        log.error("Database operation failed", ex);
-        return build(ErrorCode.INTERNAL_ERROR, "Unexpected service error", List.of());
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex) {
-        log.error("Unexpected service error", ex);
-        return build(ErrorCode.INTERNAL_ERROR, "Unexpected service error", List.of());
-    }
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
@@ -71,17 +38,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpStatusCode status,
             WebRequest request
     ) {
-        List<ErrorDetailResponse> details = new ArrayList<>();
-        boolean payloadTooLarge = false;
-        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
-            details.add(new ErrorDetailResponse(fieldError.getField(), fieldError.getDefaultMessage()));
-            if ("dataPoints".equals(fieldError.getField()) && "Size".equals(fieldError.getCode())) {
-                payloadTooLarge = true;
-            }
-        }
-        ErrorCode code = payloadTooLarge ? ErrorCode.PAYLOAD_TOO_LARGE : ErrorCode.INVALID_REQUEST;
-        String message = payloadTooLarge ? "Batch exceeds allowed size" : "Request validation failed";
-        return buildObject(code, message, details);
+        List<ErrorDetail> details = ex.getBindingResult().getAllErrors().stream()
+                .map(error -> {
+                    String field = error instanceof FieldError fieldError ? fieldError.getField() : error.getObjectName();
+                    String issue = error.getDefaultMessage() == null ? "invalid value" : error.getDefaultMessage();
+                    return new ErrorDetail(field, issue);
+                })
+                .toList();
+        return error(HttpStatus.UNPROCESSABLE_ENTITY, ValidationErrorCode.VALIDATION_ERROR.name(), "Request validation failed", details);
     }
 
     @Override
@@ -91,7 +55,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpStatusCode status,
             WebRequest request
     ) {
-        return buildObject(ErrorCode.INVALID_REQUEST, "Malformed JSON request", List.of());
+        return error(HttpStatus.BAD_REQUEST, ValidationErrorCode.BAD_REQUEST.name(), "Request JSON is malformed or contains invalid values", List.of());
     }
 
     @Override
@@ -101,11 +65,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpStatusCode status,
             WebRequest request
     ) {
-        return buildObject(
-                ErrorCode.INVALID_REQUEST,
-                "Missing required query parameter",
-                List.of(new ErrorDetailResponse(ex.getParameterName(), ex.getParameterName() + " is required"))
-        );
+        return error(HttpStatus.BAD_REQUEST, ValidationErrorCode.BAD_REQUEST.name(), "Required query parameter is missing", List.of(new ErrorDetail(ex.getParameterName(), "parameter is required")));
     }
 
     @Override
@@ -115,7 +75,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpStatusCode status,
             WebRequest request
     ) {
-        return buildObject(ErrorCode.UNSUPPORTED_MEDIA_TYPE, "Unsupported media type", List.of());
+        return error(HttpStatus.UNSUPPORTED_MEDIA_TYPE, ValidationErrorCode.UNSUPPORTED_MEDIA_TYPE.name(), "Unsupported media type", List.of());
     }
 
     @Override
@@ -125,31 +85,43 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpStatusCode status,
             WebRequest request
     ) {
-        return buildObject(ErrorCode.METHOD_NOT_ALLOWED, "Method not allowed", List.of());
+        return error(HttpStatus.METHOD_NOT_ALLOWED, ValidationErrorCode.METHOD_NOT_ALLOWED.name(), "HTTP method is not supported for this path", List.of());
     }
 
-    @Override
-    protected ResponseEntity<Object> handleNoHandlerFoundException(
-            NoHandlerFoundException ex,
-            HttpHeaders headers,
-            HttpStatusCode status,
-            WebRequest request
-    ) {
-        return buildObject(ErrorCode.NOT_FOUND, "Resource not found", List.of());
+    @ExceptionHandler(InvalidRequestException.class)
+    public ResponseEntity<Object> handleInvalidRequest(InvalidRequestException ex) {
+        List<ErrorDetail> details = ex.getIssues().stream()
+                .map(issue -> new ErrorDetail(issue.field(), issue.issue()))
+                .toList();
+        return error(HttpStatus.UNPROCESSABLE_ENTITY, ValidationErrorCode.VALIDATION_ERROR.name(), ex.getMessage(), details);
     }
 
-    private ResponseEntity<ErrorResponse> build(ErrorCode errorCode, String message, List<ErrorDetailResponse> details) {
-        return ResponseEntity.status(errorCode.getStatus())
-                .body(ErrorResponse.of(errorCode.getCode(), message, details));
+    @ExceptionHandler(InvalidQueryParameterException.class)
+    public ResponseEntity<Object> handleInvalidQueryParameter(InvalidQueryParameterException ex) {
+        List<ErrorDetail> details = ex.getIssues().stream()
+                .map(issue -> new ErrorDetail(issue.field(), issue.issue()))
+                .toList();
+        return error(HttpStatus.BAD_REQUEST, ValidationErrorCode.BAD_REQUEST.name(), ex.getMessage(), details);
     }
 
-    private ResponseEntity<Object> buildObject(ErrorCode errorCode, String message, List<ErrorDetailResponse> details) {
-        return ResponseEntity.status(errorCode.getStatus())
-                .body(ErrorResponse.of(errorCode.getCode(), message, details));
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, ConversionFailedException.class, ConstraintViolationException.class})
+    public ResponseEntity<Object> handleBadRequest(Exception ex) {
+        return error(HttpStatus.BAD_REQUEST, ValidationErrorCode.BAD_REQUEST.name(), "Request parameters are invalid", List.of());
     }
 
-    private String lastPathSegment(String path) {
-        int index = path.lastIndexOf('.');
-        return index >= 0 ? path.substring(index + 1) : path;
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Object> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        log.warn("Data integrity violation", ex);
+        return error(HttpStatus.UNPROCESSABLE_ENTITY, ValidationErrorCode.VALIDATION_ERROR.name(), "Request violates persistence constraints", List.of());
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Object> handleUnexpected(Exception ex) {
+        log.error("Unexpected service error", ex);
+        return error(HttpStatus.INTERNAL_SERVER_ERROR, ValidationErrorCode.INTERNAL_ERROR.name(), "An unexpected service error occurred", List.of());
+    }
+
+    private ResponseEntity<Object> error(HttpStatus status, String code, String message, List<ErrorDetail> details) {
+        return ResponseEntity.status(status).body(new ErrorEnvelope(new ErrorBody(code, message, details)));
     }
 }
