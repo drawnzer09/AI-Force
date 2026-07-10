@@ -3,24 +3,31 @@ server:
 
 spring:
   application:
-    name: temperature-timeseries-service
+    name: ${SPRING_APPLICATION_NAME:temperature-timeseries-service}
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/temperature_timeseries}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: ${FLYWAY_LOCATIONS:classpath:db/migration}
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: ${HIBERNATE_DDL_AUTO:validate}
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
         jdbc:
           time_zone: UTC
-  flyway:
-    enabled: ${FLYWAY_ENABLED:true}
-    locations: classpath:db/migration
+          batch_size: ${HIBERNATE_JDBC_BATCH_SIZE:100}
+        order_inserts: ${HIBERNATE_ORDER_INSERTS:true}
+        order_updates: ${HIBERNATE_ORDER_UPDATES:true}
+    show-sql: ${JPA_SHOW_SQL:false}
+  jackson:
+    time-zone: UTC
+    serialization:
+      write-dates-as-timestamps: false
 
 management:
   endpoints:
@@ -31,7 +38,9 @@ management:
     health:
       probes:
         enabled: true
+      show-details: ${ACTUATOR_HEALTH_SHOW_DETAILS:never}
 
 logging:
   level:
-    root: ${LOG_LEVEL:INFO}
+    root: ${LOGGING_LEVEL_ROOT:INFO}
+    com.example.temperature: ${LOGGING_LEVEL_APP:INFO}
