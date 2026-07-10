@@ -8,10 +8,9 @@ import java.util.List;
 
 public class TemperatureBatchRequest {
 
-    @NotEmpty(message = "records is required and must contain at least one item")
+    @NotEmpty(message = "records must contain at least 1 item")
     @Size(max = 1000, message = "records must contain no more than 1000 items")
-    @Valid
-    private List<TemperatureRecordRequest> records;
+    private List<@Valid TemperatureRecordRequest> records;
 
     public TemperatureBatchRequest() {
     }

@@ -4,23 +4,23 @@ import java.util.List;
 
 public class TemperatureQueryResponse {
 
-    private List<TemperatureRecordResponse> records;
+    private List<TemperatureRecordResponse> data;
     private PaginationResponse pagination;
 
     public TemperatureQueryResponse() {
     }
 
-    public TemperatureQueryResponse(List<TemperatureRecordResponse> records, PaginationResponse pagination) {
-        this.records = records;
+    public TemperatureQueryResponse(List<TemperatureRecordResponse> data, PaginationResponse pagination) {
+        this.data = data;
         this.pagination = pagination;
     }
 
-    public List<TemperatureRecordResponse> getRecords() {
-        return records;
+    public List<TemperatureRecordResponse> getData() {
+        return data;
     }
 
-    public void setRecords(List<TemperatureRecordResponse> records) {
-        this.records = records;
+    public void setData(List<TemperatureRecordResponse> data) {
+        this.data = data;
     }
 
     public PaginationResponse getPagination() {
