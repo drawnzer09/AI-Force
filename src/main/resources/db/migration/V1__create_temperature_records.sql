@@ -1,19 +1,13 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 CREATE TABLE temperature_records (
-    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    measurement_timestamp timestamptz NOT NULL,
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    "timestamp" timestamp with time zone NOT NULL,
     temperature numeric NOT NULL,
-    ingested_at timestamptz NOT NULL DEFAULT statement_timestamp(),
-
-    CONSTRAINT temperature_records_measurement_timestamp_finite_chk
-        CHECK (isfinite(measurement_timestamp)),
-
     CONSTRAINT temperature_records_temperature_finite_chk
-        CHECK (isfinite(temperature)),
-
-    CONSTRAINT temperature_records_ingested_at_finite_chk
-        CHECK (isfinite(ingested_at))
+        CHECK (temperature <> 'NaN'::numeric)
 );
 
-CREATE INDEX ix_temperature_records_measurement_timestamp_id
-    ON temperature_records (measurement_timestamp, id)
-    INCLUDE (temperature);
+CREATE INDEX idx_temperature_records_timestamp
+    ON temperature_records ("timestamp")
+    INCLUDE (id, temperature);

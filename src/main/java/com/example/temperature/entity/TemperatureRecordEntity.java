@@ -3,48 +3,52 @@ package com.example.temperature.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "temperature_records")
 public class TemperatureRecordEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue
+    @UuidGenerator
+    @Column(name = "id", nullable = false, updatable = false)
+    private UUID id;
 
-    @Column(name = "measurement_timestamp", nullable = false)
-    private OffsetDateTime measurementTimestamp;
+    @Column(name = "\"timestamp\"", nullable = false, columnDefinition = "timestamp with time zone")
+    private OffsetDateTime timestamp;
 
-    @Column(name = "temperature", nullable = false)
+    @Column(name = "temperature", nullable = false, precision = 38, scale = 10)
     private BigDecimal temperature;
 
-    @Column(name = "ingested_at", nullable = false, insertable = false, updatable = false)
-    private OffsetDateTime ingestedAt;
-
-    protected TemperatureRecordEntity() {
+    public TemperatureRecordEntity() {
     }
 
-    public TemperatureRecordEntity(OffsetDateTime measurementTimestamp, BigDecimal temperature) {
-        this.measurementTimestamp = measurementTimestamp;
+    public TemperatureRecordEntity(OffsetDateTime timestamp, BigDecimal temperature) {
+        this.timestamp = timestamp;
         this.temperature = temperature;
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public OffsetDateTime getMeasurementTimestamp() {
-        return measurementTimestamp;
+    public void setId(UUID id) {
+        this.id = id;
     }
 
-    public void setMeasurementTimestamp(OffsetDateTime measurementTimestamp) {
-        this.measurementTimestamp = measurementTimestamp;
+    public OffsetDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(OffsetDateTime timestamp) {
+        this.timestamp = timestamp;
     }
 
     public BigDecimal getTemperature() {
@@ -53,9 +57,5 @@ public class TemperatureRecordEntity {
 
     public void setTemperature(BigDecimal temperature) {
         this.temperature = temperature;
-    }
-
-    public OffsetDateTime getIngestedAt() {
-        return ingestedAt;
     }
 }
