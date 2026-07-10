@@ -1,10 +1,10 @@
 package com.example.temperature.dto.response;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.OffsetDateTime;
 
 public record TemperatureRecordResponse(
-        Instant timestamp,
-        BigDecimal temperature
+        OffsetDateTime timestamp,
+        BigDecimal temperatureValue
 ) {
 }

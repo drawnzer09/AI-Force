@@ -6,9 +6,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "temperature_records")
@@ -16,46 +15,40 @@ public class TemperatureRecordEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "temperature_record_id", nullable = false, updatable = false)
     private Long id;
 
-    @Column(name = "recorded_at", nullable = false)
-    private Instant recordedAt;
+    @Column(name = "recorded_at", nullable = false, columnDefinition = "timestamptz")
+    private OffsetDateTime recordedAt;
 
-    @Column(name = "temperature", nullable = false)
-    private BigDecimal temperature;
+    @Column(name = "temperature_value", nullable = false, precision = 38, scale = 10)
+    private BigDecimal temperatureValue;
 
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private Instant createdAt;
-
-    public TemperatureRecordEntity() {
+    protected TemperatureRecordEntity() {
     }
 
-    public TemperatureRecordEntity(Instant recordedAt, BigDecimal temperature) {
+    public TemperatureRecordEntity(OffsetDateTime recordedAt, BigDecimal temperatureValue) {
         this.recordedAt = recordedAt;
-        this.temperature = temperature;
+        this.temperatureValue = temperatureValue;
     }
 
     public Long getId() {
         return id;
     }
 
-    public Instant getRecordedAt() {
+    public OffsetDateTime getRecordedAt() {
         return recordedAt;
     }
 
-    public void setRecordedAt(Instant recordedAt) {
+    public void setRecordedAt(OffsetDateTime recordedAt) {
         this.recordedAt = recordedAt;
     }
 
-    public BigDecimal getTemperature() {
-        return temperature;
+    public BigDecimal getTemperatureValue() {
+        return temperatureValue;
     }
 
-    public void setTemperature(BigDecimal temperature) {
-        this.temperature = temperature;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
+    public void setTemperatureValue(BigDecimal temperatureValue) {
+        this.temperatureValue = temperatureValue;
     }
 }

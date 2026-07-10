@@ -1,11 +1,11 @@
 package com.example.temperature.exception;
 
-public class PayloadTooLargeException extends RuntimeException {
+public class InvalidQueryException extends RuntimeException {
 
     private final String field;
     private final String issue;
 
-    public PayloadTooLargeException(String field, String issue) {
+    public InvalidQueryException(String field, String issue) {
         super(issue);
         this.field = field;
         this.issue = issue;

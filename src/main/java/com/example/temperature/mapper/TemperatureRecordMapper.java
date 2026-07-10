@@ -9,10 +9,10 @@ import org.springframework.stereotype.Component;
 public class TemperatureRecordMapper {
 
     public TemperatureRecordEntity toEntity(TemperatureRecordRequest request) {
-        return new TemperatureRecordEntity(request.timestamp().toInstant(), request.temperature());
+        return new TemperatureRecordEntity(request.timestamp(), request.temperatureValue());
     }
 
     public TemperatureRecordResponse toResponse(TemperatureRecordEntity entity) {
-        return new TemperatureRecordResponse(entity.getRecordedAt(), entity.getTemperature());
+        return new TemperatureRecordResponse(entity.getRecordedAt(), entity.getTemperatureValue());
     }
 }

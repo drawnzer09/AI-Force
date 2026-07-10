@@ -3,44 +3,42 @@ server:
 
 spring:
   application:
-    name: ${SPRING_APPLICATION_NAME:temperature-timeseries-service}
+    name: temperature-time-series-service
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/temperature_timeseries}
-    username: ${DATABASE_USERNAME:postgres}
-    password: ${DATABASE_PASSWORD:postgres}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/temperature}
+    username: ${DATABASE_USERNAME:temperature}
+    password: ${DATABASE_PASSWORD:temperature}
     driver-class-name: org.postgresql.Driver
-  flyway:
-    enabled: ${FLYWAY_ENABLED:true}
-    locations: ${FLYWAY_LOCATIONS:classpath:db/migration}
   jpa:
-    open-in-view: false
     hibernate:
-      ddl-auto: ${HIBERNATE_DDL_AUTO:validate}
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    open-in-view: false
     properties:
       hibernate:
         jdbc:
           time_zone: UTC
-          batch_size: ${HIBERNATE_JDBC_BATCH_SIZE:100}
-        order_inserts: ${HIBERNATE_ORDER_INSERTS:true}
-        order_updates: ${HIBERNATE_ORDER_UPDATES:true}
-    show-sql: ${JPA_SHOW_SQL:false}
-  jackson:
-    time-zone: UTC
-    serialization:
-      write-dates-as-timestamps: false
+        format_sql: ${HIBERNATE_FORMAT_SQL:false}
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: ${FLYWAY_LOCATIONS:classpath:db/migration}
 
 management:
   endpoints:
     web:
       exposure:
-        include: ${ACTUATOR_ENDPOINTS:health,info}
+        include: ${MANAGEMENT_ENDPOINTS_INCLUDE:health,info}
   endpoint:
     health:
       probes:
-        enabled: true
-      show-details: ${ACTUATOR_HEALTH_SHOW_DETAILS:never}
+        enabled: ${MANAGEMENT_HEALTH_PROBES_ENABLED:true}
 
 logging:
   level:
     root: ${LOGGING_LEVEL_ROOT:INFO}
     com.example.temperature: ${LOGGING_LEVEL_APP:INFO}
+
+app:
+  temperature:
+    max-batch-size: ${TEMPERATURE_MAX_BATCH_SIZE:1000}
+    default-page-size: ${TEMPERATURE_DEFAULT_PAGE_SIZE:1000}
+    max-page-size: ${TEMPERATURE_MAX_PAGE_SIZE:1000}
