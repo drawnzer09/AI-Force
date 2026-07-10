@@ -13,6 +13,6 @@ public class TemperatureRecordMapper {
     }
 
     public TemperatureRecordResponse toResponse(TemperatureRecordEntity entity) {
-        return new TemperatureRecordResponse(entity.getMeasurementTimestamp(), entity.getTemperature());
+        return new TemperatureRecordResponse(entity.getId(), entity.getTimestamp(), entity.getTemperature());
     }
 }
