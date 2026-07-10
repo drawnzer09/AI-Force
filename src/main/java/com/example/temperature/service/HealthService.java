@@ -1,6 +1,5 @@
 package com.example.temperature.service;
 
-import org.springframework.boot.actuate.health.HealthComponent;
 import org.springframework.boot.actuate.health.HealthEndpoint;
 import org.springframework.boot.actuate.health.Status;
 import org.springframework.stereotype.Service;
@@ -14,8 +13,7 @@ public class HealthService {
         this.healthEndpoint = healthEndpoint;
     }
 
-    public boolean isHealthy() {
-        HealthComponent health = healthEndpoint.health();
-        return Status.UP.equals(health.getStatus());
+    public boolean isUp() {
+        return Status.UP.equals(healthEndpoint.health().getStatus());
     }
 }
