@@ -1,13 +1,14 @@
 package com.example.temperature.controller;
 
-import com.example.temperature.dto.request.TemperatureBatchRequest;
-import com.example.temperature.dto.response.TemperatureBatchResponse;
-import com.example.temperature.dto.response.TemperatureQueryResponse;
+import com.example.temperature.dto.request.IngestTemperatureRecordsRequest;
+import com.example.temperature.dto.response.IngestTemperatureRecordsResponse;
+import com.example.temperature.dto.response.TemperatureRecordsResponse;
 import com.example.temperature.service.TemperatureRecordService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,8 +19,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.OffsetDateTime;
 
+@Validated
 @RestController
-@RequestMapping(path = "/v1/temperature-records", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping("/v1/temperature-records")
 public class TemperatureRecordController {
 
     private final TemperatureRecordService service;
@@ -28,20 +30,21 @@ public class TemperatureRecordController {
         this.service = service;
     }
 
-    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(consumes = "application/json", produces = "application/json")
     @ResponseStatus(HttpStatus.CREATED)
-    public TemperatureBatchResponse ingest(@Valid @RequestBody TemperatureBatchRequest request) {
+    public IngestTemperatureRecordsResponse ingest(@Valid @RequestBody IngestTemperatureRecordsRequest request) {
         return service.ingest(request);
     }
 
-    @GetMapping
-    public TemperatureQueryResponse query(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime startTime,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime endTime,
-            @RequestParam(required = false) Integer limit,
-            @RequestParam(required = false) Integer offset,
-            @RequestParam(required = false) String sort
+    @GetMapping(produces = "application/json")
+    public TemperatureRecordsResponse query(
+            @RequestParam @NotNull(message = "startTime is required")
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime startTime,
+            @RequestParam @NotNull(message = "endTime is required")
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime endTime,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer limit
     ) {
-        return service.query(startTime, endTime, limit, offset, sort);
+        return service.query(startTime, endTime, page, limit);
     }
 }
