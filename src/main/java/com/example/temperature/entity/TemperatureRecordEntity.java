@@ -7,7 +7,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import java.time.OffsetDateTime;
+import java.math.BigDecimal;
+import java.time.Instant;
 
 @Entity
 @Table(name = "temperature_records")
@@ -17,17 +18,20 @@ public class TemperatureRecordEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "reading_timestamp", nullable = false)
-    private OffsetDateTime readingTimestamp;
+    @Column(name = "recorded_at", nullable = false)
+    private Instant recordedAt;
 
-    @Column(name = "temperature", nullable = false)
-    private Double temperature;
+    @Column(name = "temperature", nullable = false, precision = 38, scale = 10)
+    private BigDecimal temperature;
 
-    protected TemperatureRecordEntity() {
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
+    private Instant createdAt;
+
+    public TemperatureRecordEntity() {
     }
 
-    public TemperatureRecordEntity(OffsetDateTime readingTimestamp, Double temperature) {
-        this.readingTimestamp = readingTimestamp;
+    public TemperatureRecordEntity(Instant recordedAt, BigDecimal temperature) {
+        this.recordedAt = recordedAt;
         this.temperature = temperature;
     }
 
@@ -35,19 +39,23 @@ public class TemperatureRecordEntity {
         return id;
     }
 
-    public OffsetDateTime getReadingTimestamp() {
-        return readingTimestamp;
+    public Instant getRecordedAt() {
+        return recordedAt;
     }
 
-    public void setReadingTimestamp(OffsetDateTime readingTimestamp) {
-        this.readingTimestamp = readingTimestamp;
+    public void setRecordedAt(Instant recordedAt) {
+        this.recordedAt = recordedAt;
     }
 
-    public Double getTemperature() {
+    public BigDecimal getTemperature() {
         return temperature;
     }
 
-    public void setTemperature(Double temperature) {
+    public void setTemperature(BigDecimal temperature) {
         this.temperature = temperature;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
     }
 }
