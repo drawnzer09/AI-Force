@@ -69,4 +69,85 @@ public class TemperatureRecordService {
     ) {
         validateRange(from, to);
 
-        int normalized
+        int normalizedPage = normalizePage(page);
+        int normalizedPageSize = normalizePageSize(pageSize);
+        Sort.Direction direction = normalizeSort(sort);
+
+        PageRequest pageRequest = PageRequest.of(
+                normalizedPage - 1,
+                normalizedPageSize,
+                Sort.by(direction, "measurementTimestamp").and(Sort.by(direction, "id"))
+        );
+
+        try {
+            Page<TemperatureRecordEntity> resultPage =
+                    repository.findByOptionalMeasurementTimestampRange(from, to, pageRequest);
+
+            List<TemperatureRecordResponse> records = resultPage.getContent()
+                    .stream()
+                    .map(mapper::toResponse)
+                    .toList();
+
+            PaginationResponse pagination = new PaginationResponse(
+                    normalizedPage,
+                    normalizedPageSize,
+                    records.size(),
+                    resultPage.hasNext()
+            );
+
+            LOGGER.info(
+                    "Queried temperature records from={} to={} page={} pageSize={} sort={} returnedCount={}",
+                    from,
+                    to,
+                    normalizedPage,
+                    normalizedPageSize,
+                    sort == null ? SORT_ASC : sort,
+                    records.size()
+            );
+
+            return new TemperatureQueryResponse(records, pagination);
+        } catch (DataAccessException ex) {
+            LOGGER.error("Failed to query temperature records", ex);
+            throw new PersistenceUnavailableException("Persistence layer is unavailable", ex);
+        }
+    }
+
+    private void validateRange(OffsetDateTime from, OffsetDateTime to) {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new InvalidQueryParameterException("from", "from must be earlier than or equal to to");
+        }
+    }
+
+    private int normalizePage(Integer page) {
+        if (page == null) {
+            return DEFAULT_PAGE;
+        }
+        if (page < 1) {
+            throw new InvalidQueryParameterException("page", "page must be greater than or equal to 1");
+        }
+        return page;
+    }
+
+    private int normalizePageSize(Integer pageSize) {
+        if (pageSize == null) {
+            return DEFAULT_PAGE_SIZE;
+        }
+        if (pageSize < 1) {
+            throw new InvalidQueryParameterException("pageSize", "pageSize must be greater than or equal to 1");
+        }
+        if (pageSize > MAX_PAGE_SIZE) {
+            throw new InvalidQueryParameterException("pageSize", "pageSize must be less than or equal to 1000");
+        }
+        return pageSize;
+    }
+
+    private Sort.Direction normalizeSort(String sort) {
+        if (sort == null || sort.isBlank() || SORT_ASC.equals(sort)) {
+            return Sort.Direction.ASC;
+        }
+        if (SORT_DESC.equals(sort)) {
+            return Sort.Direction.DESC;
+        }
+        throw new InvalidQueryParameterException("sort", "sort must be one of: timestamp, -timestamp");
+    }
+}
