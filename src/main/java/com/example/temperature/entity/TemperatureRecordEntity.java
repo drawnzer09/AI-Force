@@ -21,7 +21,7 @@ public class TemperatureRecordEntity {
     @Column(name = "recorded_at", nullable = false)
     private Instant recordedAt;
 
-    @Column(name = "temperature", nullable = false, precision = 38, scale = 10)
+    @Column(name = "temperature", nullable = false)
     private BigDecimal temperature;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
