@@ -12,9 +12,9 @@
     </parent>
 
     <groupId>com.example</groupId>
-    <artifactId>temperature-time-series-service</artifactId>
+    <artifactId>temperature-timeseries-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>temperature-time-series-service</name>
+    <name>temperature-timeseries-service</name>
     <description>Temperature Time-Series Data Service</description>
 
     <properties>
@@ -52,7 +52,6 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
