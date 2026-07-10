@@ -194,3 +194,42 @@ public class GlobalExceptionHandler {
         return buildResponse(
                 ErrorCode.INTERNAL_SERVER_ERROR,
                 ErrorCode.INTERNAL_SERVER_ERROR.getDefaultMessage(),
+                List.of(new ErrorDetailResponse("error", "unexpected service error")),
+                request
+        );
+    }
+
+    private ErrorDetailResponse toDetail(FieldError fieldError) {
+        return new ErrorDetailResponse(fieldError.getField(), fieldError.getDefaultMessage());
+    }
+
+    private ErrorDetailResponse toDetail(ConstraintViolation<?> violation) {
+        return new ErrorDetailResponse(violation.getPropertyPath().toString(), violation.getMessage());
+    }
+
+    private String resolveField(Exception exception) {
+        if (exception instanceof MethodArgumentTypeMismatchException mismatchException) {
+            return mismatchException.getName();
+        }
+        if (exception instanceof MissingServletRequestParameterException missingParameterException) {
+            return missingParameterException.getParameterName();
+        }
+        return "request";
+    }
+
+    private ResponseEntity<ErrorEnvelopeResponse> buildResponse(
+            ErrorCode errorCode,
+            String message,
+            List<ErrorDetailResponse> details,
+            HttpServletRequest request
+    ) {
+        String requestId = getRequestId(request);
+        ErrorResponse error = new ErrorResponse(errorCode.getCode(), message, details, requestId);
+        return ResponseEntity.status(errorCode.getStatus()).body(new ErrorEnvelopeResponse(error));
+    }
+
+    private String getRequestId(HttpServletRequest request) {
+        Object requestId = request.getAttribute(RequestIdFilter.REQUEST_ID_ATTRIBUTE);
+        return requestId == null ? "" : requestId.toString();
+    }
+}
