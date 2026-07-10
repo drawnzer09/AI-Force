@@ -21,7 +21,7 @@ public class TemperatureRecordEntity {
     @Column(name = "recorded_at", nullable = false, columnDefinition = "timestamptz")
     private OffsetDateTime recordedAt;
 
-    @Column(name = "temperature_value", nullable = false, precision = 38, scale = 10)
+    @Column(name = "temperature_value", nullable = false)
     private BigDecimal temperatureValue;
 
     protected TemperatureRecordEntity() {

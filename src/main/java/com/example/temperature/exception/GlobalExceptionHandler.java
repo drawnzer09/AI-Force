@@ -133,4 +133,47 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     private ResponseEntity<Object> build(HttpStatus status, String code, String message, List<ApiErrorDetail> details) {
-        return ResponseEntity.status(status).body(ApiErrorResponse.of(code, message, details
+        return ResponseEntity.status(status).body(ApiErrorResponse.of(code, message, details));
+    }
+
+    private ApiErrorDetail toDetail(ConstraintViolation<?> violation) {
+        return new ApiErrorDetail(lastPathNode(violation.getPropertyPath().toString()), violation.getMessage());
+    }
+
+    private String resolveMessage(FieldError error) {
+        String defaultMessage = error.getDefaultMessage();
+        return defaultMessage == null ? "value is invalid" : defaultMessage;
+    }
+
+    private boolean isBodyValidationFormatError(InvalidFormatException ex) {
+        Class<?> targetType = ex.getTargetType();
+        return OffsetDateTime.class.equals(targetType) || BigDecimal.class.equals(targetType);
+    }
+
+    private String jsonPath(List<JsonMappingException.Reference> references) {
+        if (references == null || references.isEmpty()) {
+            return null;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        for (JsonMappingException.Reference reference : references) {
+            if (reference.getFieldName() != null) {
+                if (!builder.isEmpty()) {
+                    builder.append('.');
+                }
+                builder.append(reference.getFieldName());
+            } else if (reference.getIndex() >= 0) {
+                builder.append('[').append(reference.getIndex()).append(']');
+            }
+        }
+        return builder.isEmpty() ? null : builder.toString();
+    }
+
+    private String lastPathNode(String path) {
+        if (path == null || path.isBlank()) {
+            return path;
+        }
+        int index = path.lastIndexOf('.');
+        return index >= 0 ? path.substring(index + 1) : path;
+    }
+}
