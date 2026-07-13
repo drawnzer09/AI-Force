@@ -3,52 +3,47 @@ package com.example.temperature.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import org.hibernate.annotations.UuidGenerator;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.UUID;
+import java.util.Objects;
 
 @Entity
 @Table(name = "temperature_records")
 public class TemperatureRecordEntity {
 
     @Id
-    @GeneratedValue
-    @UuidGenerator
-    @Column(name = "id", nullable = false, updatable = false)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "temperature_record_id", nullable = false, updatable = false)
+    private Long id;
 
-    @Column(name = "\"timestamp\"", nullable = false, columnDefinition = "timestamp with time zone")
-    private OffsetDateTime timestamp;
+    @Column(name = "recorded_at", nullable = false)
+    private OffsetDateTime recordedAt;
 
     @Column(name = "temperature", nullable = false, precision = 38, scale = 10)
     private BigDecimal temperature;
 
-    public TemperatureRecordEntity() {
+    protected TemperatureRecordEntity() {
     }
 
-    public TemperatureRecordEntity(OffsetDateTime timestamp, BigDecimal temperature) {
-        this.timestamp = timestamp;
+    public TemperatureRecordEntity(OffsetDateTime recordedAt, BigDecimal temperature) {
+        this.recordedAt = recordedAt;
         this.temperature = temperature;
     }
 
-    public UUID getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(UUID id) {
-        this.id = id;
+    public OffsetDateTime getRecordedAt() {
+        return recordedAt;
     }
 
-    public OffsetDateTime getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(OffsetDateTime timestamp) {
-        this.timestamp = timestamp;
+    public void setRecordedAt(OffsetDateTime recordedAt) {
+        this.recordedAt = recordedAt;
     }
 
     public BigDecimal getTemperature() {
@@ -57,5 +52,21 @@ public class TemperatureRecordEntity {
 
     public void setTemperature(BigDecimal temperature) {
         this.temperature = temperature;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof TemperatureRecordEntity that)) {
+            return false;
+        }
+        return id != null && Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return TemperatureRecordEntity.class.hashCode();
     }
 }
