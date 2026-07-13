@@ -23,7 +23,7 @@ public class TemperatureDataPointEntity {
     @Column(name = "\"timestamp\"", nullable = false, columnDefinition = "timestamptz")
     private OffsetDateTime timestamp;
 
-    @Column(name = "temperature", nullable = false, precision = 38, scale = 10)
+    @Column(name = "temperature", nullable = false)
     private BigDecimal temperature;
 
     public TemperatureDataPointEntity() {
