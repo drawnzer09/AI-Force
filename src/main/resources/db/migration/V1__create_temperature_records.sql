@@ -1,13 +1,10 @@
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
 CREATE TABLE temperature_records (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    "timestamp" timestamp with time zone NOT NULL,
+    temperature_record_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    recorded_at timestamptz NOT NULL,
     temperature numeric NOT NULL,
-    CONSTRAINT temperature_records_temperature_finite_chk
+    CONSTRAINT chk_temperature_records_temperature_finite
         CHECK (temperature <> 'NaN'::numeric)
 );
 
-CREATE INDEX idx_temperature_records_timestamp
-    ON temperature_records ("timestamp")
-    INCLUDE (id, temperature);
+CREATE INDEX idx_temperature_records_recorded_at_id
+    ON temperature_records (recorded_at, temperature_record_id);
