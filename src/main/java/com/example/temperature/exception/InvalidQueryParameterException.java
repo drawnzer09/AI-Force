@@ -1,27 +1,19 @@
 package com.example.temperature.exception;
 
+import com.example.temperature.dto.error.ErrorDetail;
+
+import java.util.List;
+
 public class InvalidQueryParameterException extends RuntimeException {
 
-    private final String code;
-    private final String field;
-    private final String detailMessage;
+    private final List<ErrorDetail> details;
 
-    public InvalidQueryParameterException(String code, String message, String field, String detailMessage) {
-        super(message);
-        this.code = code;
-        this.field = field;
-        this.detailMessage = detailMessage;
+    public InvalidQueryParameterException(List<ErrorDetail> details) {
+        super("Invalid query parameter");
+        this.details = List.copyOf(details);
     }
 
-    public String getCode() {
-        return code;
-    }
-
-    public String getField() {
-        return field;
-    }
-
-    public String getDetailMessage() {
-        return detailMessage;
+    public List<ErrorDetail> getDetails() {
+        return details;
     }
 }
