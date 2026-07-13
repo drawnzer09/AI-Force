@@ -1,18 +1,17 @@
 server:
   port: ${SERVER_PORT:8080}
+  tomcat:
+    max-http-form-post-size: ${SERVER_MAX_HTTP_FORM_POST_SIZE:2MB}
+    max-swallow-size: ${SERVER_MAX_SWALLOW_SIZE:2MB}
 
 spring:
   application:
-    name: temperature
+    name: ${SPRING_APPLICATION_NAME:temperature-timeseries-api}
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/temperature}
-    username: ${DB_USERNAME:temperature}
-    password: ${DB_PASSWORD:temperature}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/temperature_timeseries}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
-  jackson:
-    default-property-inclusion: non_null
-    serialization:
-      write-dates-as-timestamps: false
   jpa:
     open-in-view: false
     hibernate:
@@ -22,21 +21,25 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         jdbc:
           time_zone: UTC
-        format_sql: ${HIBERNATE_FORMAT_SQL:false}
+    show-sql: ${JPA_SHOW_SQL:false}
   flyway:
     enabled: ${FLYWAY_ENABLED:true}
     locations: ${FLYWAY_LOCATIONS:classpath:db/migration}
+  servlet:
+    multipart:
+      max-request-size: ${MAX_REQUEST_SIZE:2MB}
+      max-file-size: ${MAX_FILE_SIZE:2MB}
+  mvc:
+    throw-exception-if-no-handler-found: true
   web:
     resources:
       add-mappings: false
-  mvc:
-    throw-exception-if-no-handler-found: true
 
 management:
   endpoints:
     web:
       exposure:
-        include: ${ACTUATOR_EXPOSED_ENDPOINTS:health,info}
+        include: ${ACTUATOR_ENDPOINTS:health,info}
   endpoint:
     health:
       probes:
@@ -44,5 +47,5 @@ management:
 
 logging:
   level:
-    root: ${LOG_LEVEL_ROOT:INFO}
-    com.example.temperature: ${LOG_LEVEL_APP:INFO}
+    root: ${LOGGING_LEVEL_ROOT:INFO}
+    com.example.temperature: ${LOGGING_LEVEL_APP:INFO}
