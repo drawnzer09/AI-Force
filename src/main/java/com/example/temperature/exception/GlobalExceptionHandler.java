@@ -7,6 +7,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -146,6 +147,24 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         );
     }
 
+    @Override
+    protected ResponseEntity<Object> handleTypeMismatch(
+            TypeMismatchException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            org.springframework.web.context.request.WebRequest request
+    ) {
+        String field = ex instanceof MethodArgumentTypeMismatchException mismatchException
+                ? mismatchException.getName()
+                : ex.getPropertyName();
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "INVALID_REQUEST_PARAMETER",
+                "Invalid request parameter",
+                List.of(new ErrorDetailResponse(field, "Invalid value for parameter " + field))
+        );
+    }
+
     @ExceptionHandler(InvalidQueryParameterException.class)
     public ResponseEntity<Object> handleInvalidQueryParameter(InvalidQueryParameterException ex) {
         return buildResponse(
@@ -153,18 +172,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 ex.getCode(),
                 ex.getMessage(),
                 List.of(new ErrorDetailResponse(ex.getField(), ex.getDetailMessage()))
-        );
-    }
-
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<Object> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        String field = ex.getName();
-        String message = "Invalid value for parameter " + field;
-        return buildResponse(
-                HttpStatus.BAD_REQUEST,
-                "INVALID_REQUEST_PARAMETER",
-                "Invalid request parameter",
-                List.of(new ErrorDetailResponse(field, message))
         );
     }
 
