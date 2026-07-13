@@ -53,6 +53,25 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @Override
+    protected ResponseEntity<Object> handleHandlerMethodValidationException(
+            HandlerMethodValidationException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            org.springframework.web.context.request.WebRequest request
+    ) {
+        List<ErrorDetailResponse> details = new ArrayList<>();
+        ex.getAllValidationResults().forEach(result -> {
+            String parameterName = result.getMethodParameter().getParameterName();
+            for (MessageSourceResolvable error : result.getResolvableErrors()) {
+                details.add(new ErrorDetailResponse(parameterName, error.getDefaultMessage()));
+            }
+        });
+
+        log.warn("Handler method validation failed: {}", details);
+        return buildResponse(HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION_FAILED", "Validation failed", details);
+    }
+
+    @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(
             HttpMessageNotReadableException ex,
             HttpHeaders headers,
@@ -155,51 +174,3 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .stream()
                 .sorted(Comparator.comparing(violation -> violation.getPropertyPath().toString()))
                 .map(this::toErrorDetail)
-                .toList();
-
-        log.warn("Constraint validation failed: {}", details);
-        return buildResponse(HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION_FAILED", "Validation failed", details);
-    }
-
-    @ExceptionHandler(HandlerMethodValidationException.class)
-    public ResponseEntity<Object> handleHandlerMethodValidation(HandlerMethodValidationException ex) {
-        List<ErrorDetailResponse> details = new ArrayList<>();
-        ex.getAllValidationResults().forEach(result -> {
-            String parameterName = result.getMethodParameter().getParameterName();
-            for (MessageSourceResolvable error : result.getResolvableErrors()) {
-                details.add(new ErrorDetailResponse(parameterName, error.getDefaultMessage()));
-            }
-        });
-
-        log.warn("Handler method validation failed: {}", details);
-        return buildResponse(HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION_FAILED", "Validation failed", details);
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Object> handleUnexpected(Exception ex) {
-        log.error("Unexpected server error", ex);
-        return buildResponse(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "INTERNAL_SERVER_ERROR",
-                "An unexpected server error occurred",
-                List.of()
-        );
-    }
-
-    private ErrorDetailResponse toErrorDetail(ConstraintViolation<?> violation) {
-        String field = violation.getPropertyPath() == null ? null : violation.getPropertyPath().toString();
-        return new ErrorDetailResponse(field, violation.getMessage());
-    }
-
-    private ResponseEntity<Object> buildResponse(
-            HttpStatus status,
-            String code,
-            String message,
-            List<ErrorDetailResponse> details
-    ) {
-        ErrorEnvelopeResponse response = new ErrorEnvelopeResponse(
-                new ErrorBodyResponse(code, message, details)
-        );
-        return ResponseEntity.status(status).body(response);
-    }
-}
