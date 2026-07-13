@@ -84,3 +84,122 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleHttpRequestMethodNotSupported(
+            HttpRequestMethodNotSupportedException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            org.springframework.web.context.request.WebRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.METHOD_NOT_ALLOWED,
+                "METHOD_NOT_ALLOWED",
+                "Method not allowed",
+                List.of(new ErrorDetailResponse(null, ex.getMessage()))
+        );
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleNoHandlerFoundException(
+            NoHandlerFoundException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            org.springframework.web.context.request.WebRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                "NOT_FOUND",
+                "Resource not found",
+                List.of(new ErrorDetailResponse("path", ex.getRequestURL()))
+        );
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleNoResourceFoundException(
+            NoResourceFoundException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            org.springframework.web.context.request.WebRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                "NOT_FOUND",
+                "Resource not found",
+                List.of(new ErrorDetailResponse("path", ex.getResourcePath()))
+        );
+    }
+
+    @ExceptionHandler(InvalidQueryParameterException.class)
+    public ResponseEntity<Object> handleInvalidQueryParameter(InvalidQueryParameterException ex) {
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getCode(),
+                ex.getMessage(),
+                List.of(new ErrorDetailResponse(ex.getField(), ex.getDetailMessage()))
+        );
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Object> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String field = ex.getName();
+        String message = "Invalid value for parameter " + field;
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "INVALID_REQUEST_PARAMETER",
+                "Invalid request parameter",
+                List.of(new ErrorDetailResponse(field, message))
+        );
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Object> handleConstraintViolation(ConstraintViolationException ex) {
+        List<ErrorDetailResponse> details = ex.getConstraintViolations()
+                .stream()
+                .sorted(Comparator.comparing(violation -> violation.getPropertyPath().toString()))
+                .map(this::toErrorDetail)
+                .toList();
+
+        log.warn("Constraint validation failed: {}", details);
+        return buildResponse(HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION_FAILED", "Validation failed", details);
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<Object> handleHandlerMethodValidation(HandlerMethodValidationException ex) {
+        List<ErrorDetailResponse> details = new ArrayList<>();
+        ex.getAllValidationResults().forEach(result -> {
+            String parameterName = result.getMethodParameter().getParameterName();
+            for (MessageSourceResolvable error : result.getResolvableErrors()) {
+                details.add(new ErrorDetailResponse(parameterName, error.getDefaultMessage()));
+            }
+        });
+
+        log.warn("Handler method validation failed: {}", details);
+        return buildResponse(HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION_FAILED", "Validation failed", details);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Object> handleUnexpected(Exception ex) {
+        log.error("Unexpected server error", ex);
+        return buildResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "INTERNAL_SERVER_ERROR",
+                "An unexpected server error occurred",
+                List.of()
+        );
+    }
+
+    private ErrorDetailResponse toErrorDetail(ConstraintViolation<?> violation) {
+        String field = violation.getPropertyPath() == null ? null : violation.getPropertyPath().toString();
+        return new ErrorDetailResponse(field, violation.getMessage());
+    }
+
+    private ResponseEntity<Object> buildResponse(
+            HttpStatus status,
+            String code,
+            String message,
+            List<ErrorDetailResponse> details
+    ) {
+        ErrorEnvelopeResponse response = new ErrorEnvelopeResponse(
+                new ErrorBodyResponse(code, message, details)
+        );
+        return ResponseEntity.status(status).body(response);
+    }
+}
