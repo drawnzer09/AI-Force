@@ -1,51 +1,18 @@
 server:
   port: ${SERVER_PORT:8080}
-  tomcat:
-    max-http-form-post-size: ${SERVER_MAX_HTTP_FORM_POST_SIZE:2MB}
-    max-swallow-size: ${SERVER_MAX_SWALLOW_SIZE:2MB}
 
 spring:
   application:
-    name: ${SPRING_APPLICATION_NAME:temperature-timeseries-api}
+    name: ai-force
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/temperature_timeseries}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/ai_force}
     username: ${DATABASE_USERNAME:postgres}
     password: ${DATABASE_PASSWORD:postgres}
-    driver-class-name: org.postgresql.Driver
   jpa:
-    open-in-view: false
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:validate}
+      ddl-auto: validate
+    open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        jdbc:
-          time_zone: UTC
-    show-sql: ${JPA_SHOW_SQL:false}
-  flyway:
-    enabled: ${FLYWAY_ENABLED:true}
-    locations: ${FLYWAY_LOCATIONS:classpath:db/migration}
-  servlet:
-    multipart:
-      max-request-size: ${MAX_REQUEST_SIZE:2MB}
-      max-file-size: ${MAX_FILE_SIZE:2MB}
-  mvc:
-    throw-exception-if-no-handler-found: true
-  web:
-    resources:
-      add-mappings: false
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: ${ACTUATOR_ENDPOINTS:health,info}
-  endpoint:
-    health:
-      probes:
-        enabled: true
-
-logging:
-  level:
-    root: ${LOGGING_LEVEL_ROOT:INFO}
-    com.example.temperature: ${LOGGING_LEVEL_APP:INFO}
+        format_sql: true
