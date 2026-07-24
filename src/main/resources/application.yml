@@ -3,16 +3,28 @@ server:
 
 spring:
   application:
-    name: ai-force
-  datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/ai_force}
-    username: ${DATABASE_USERNAME:postgres}
-    password: ${DATABASE_PASSWORD:postgres}
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    open-in-view: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+    name: ${SPRING_APPLICATION_NAME:todo-service}
+  jackson:
+    time-zone: UTC
+    serialization:
+      write-dates-as-timestamps: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info}
+  endpoint:
+    health:
+      probes:
+        enabled: ${MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED:true}
+
+logging:
+  level:
+    root: ${LOGGING_LEVEL_ROOT:INFO}
+    com.aiforce.apobank.todo: ${LOGGING_LEVEL_TODO:INFO}
+
+todo:
+  pagination:
+    default-size: ${TODO_DEFAULT_PAGE_SIZE:50}
+    max-size: ${TODO_MAX_PAGE_SIZE:100}
