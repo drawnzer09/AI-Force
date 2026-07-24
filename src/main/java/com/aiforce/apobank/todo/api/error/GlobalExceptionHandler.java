@@ -103,11 +103,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "An unexpected error occurred", List.of());
     }
 
-    private FieldErrorDetail toDetail(FieldError fieldError) {
-        return new FieldErrorDetail(fieldError.getField(), fieldError.getDefaultMessage());
+    private ApiErrorDetail toDetail(FieldError fieldError) {
+        return new ApiErrorDetail(fieldError.getField(), fieldError.getDefaultMessage());
     }
 
-    private ResponseEntity<Object> build(HttpStatus status, String code, String message, List<? extends ApiErrorDetail> details) {
+    private ResponseEntity<Object> build(HttpStatus status, String code, String message, List<ApiErrorDetail> details) {
         ApiErrorResponse response = new ApiErrorResponse(new ApiError(code, message, List.copyOf(details), Instant.now(clock)));
         return ResponseEntity.status(status).body(response);
     }
@@ -115,11 +115,5 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     private String lastPathNode(String path) {
         int index = path.lastIndexOf('.');
         return index >= 0 ? path.substring(index + 1) : path;
-    }
-
-    private static final class FieldErrorDetail extends ApiErrorDetail {
-        private FieldErrorDetail(String field, String issue) {
-            super(field, issue);
-        }
     }
 }
