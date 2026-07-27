@@ -18,10 +18,10 @@ public class TemperatureDataPointEntity {
     @Column(name = "temperature_data_point_id", nullable = false, updatable = false)
     private Long id;
 
-    @Column(name = "recorded_at", nullable = false)
+    @Column(name = "recorded_at", nullable = false, columnDefinition = "timestamptz")
     private OffsetDateTime recordedAt;
 
-    @Column(name = "temperature", nullable = false, precision = 38, scale = 10)
+    @Column(name = "temperature", nullable = false, columnDefinition = "numeric")
     private BigDecimal temperature;
 
     protected TemperatureDataPointEntity() {

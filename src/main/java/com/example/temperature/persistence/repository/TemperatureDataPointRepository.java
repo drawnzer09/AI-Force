@@ -10,13 +10,21 @@ import org.springframework.data.repository.query.Param;
 
 public interface TemperatureDataPointRepository extends JpaRepository<TemperatureDataPointEntity, Long> {
 
-    @Query("""
-            select dataPoint
-            from TemperatureDataPointEntity dataPoint
-            where (:fromTimestamp is null or dataPoint.recordedAt >= :fromTimestamp)
-              and (:toTimestamp is null or dataPoint.recordedAt <= :toTimestamp)
-            order by dataPoint.recordedAt asc, dataPoint.id asc
-            """)
+    @Query(
+            value = """
+                    select dataPoint
+                    from TemperatureDataPointEntity dataPoint
+                    where (:fromTimestamp is null or dataPoint.recordedAt >= :fromTimestamp)
+                      and (:toTimestamp is null or dataPoint.recordedAt <= :toTimestamp)
+                    order by dataPoint.recordedAt asc, dataPoint.id asc
+                    """,
+            countQuery = """
+                    select count(dataPoint)
+                    from TemperatureDataPointEntity dataPoint
+                    where (:fromTimestamp is null or dataPoint.recordedAt >= :fromTimestamp)
+                      and (:toTimestamp is null or dataPoint.recordedAt <= :toTimestamp)
+                    """
+    )
     Page<TemperatureDataPointEntity> findByOptionalTimestampRange(
             @Param("fromTimestamp") OffsetDateTime fromTimestamp,
             @Param("toTimestamp") OffsetDateTime toTimestamp,
