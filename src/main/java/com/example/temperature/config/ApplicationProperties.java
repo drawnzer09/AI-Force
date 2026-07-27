@@ -17,5 +17,16 @@ public record ApplicationProperties(
             int defaultPageSize,
             int maxPageSize
     ) {
+        public Pagination {
+            if (defaultPageSize <= 0) {
+                defaultPageSize = 100;
+            }
+            if (maxPageSize <= 0) {
+                maxPageSize = 1000;
+            }
+            if (defaultPageSize > maxPageSize) {
+                defaultPageSize = maxPageSize;
+            }
+        }
     }
 }

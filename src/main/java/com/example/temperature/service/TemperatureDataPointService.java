@@ -91,10 +91,20 @@ public class TemperatureDataPointService {
 
     private void validateQuery(OffsetDateTime fromTimestamp, OffsetDateTime toTimestamp, int page, int size) {
         if (page < 0) {
-            throw new InvalidRequestException("INVALID_PAGINATION", "Invalid pagination value", "page", "page must be greater than or equal to 0");
+            throw new InvalidRequestException(
+                    "INVALID_PAGINATION",
+                    "Invalid pagination value",
+                    "page",
+                    "page must be greater than or equal to 0"
+            );
         }
         if (size < 1) {
-            throw new InvalidRequestException("INVALID_PAGINATION", "Invalid pagination value", "size", "size must be greater than or equal to 1");
+            throw new InvalidRequestException(
+                    "INVALID_PAGINATION",
+                    "Invalid pagination value",
+                    "size",
+                    "size must be greater than or equal to 1"
+            );
         }
         if (size > applicationProperties.pagination().maxPageSize()) {
             throw new InvalidRequestException(

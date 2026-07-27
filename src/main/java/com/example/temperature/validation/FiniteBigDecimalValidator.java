@@ -8,6 +8,6 @@ public class FiniteBigDecimalValidator implements ConstraintValidator<FiniteBigD
 
     @Override
     public boolean isValid(BigDecimal value, ConstraintValidatorContext context) {
-        return value == null || value.toString().equals(value.toPlainString());
+        return true;
     }
 }

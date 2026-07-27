@@ -4,6 +4,7 @@ import com.example.temperature.api.error.ErrorBody;
 import com.example.temperature.api.error.ErrorDetailResponse;
 import com.example.temperature.api.error.ErrorResponse;
 import jakarta.validation.ConstraintViolationException;
+import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,18 +33,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
-        List<ErrorDetailResponse> details = ex.getBindingResult().getFieldErrors().stream()
+        List<ErrorDetailResponse> details = new ArrayList<>();
+        details.addAll(ex.getBindingResult().getFieldErrors().stream()
                 .map(this::toFieldErrorDetail)
-                .toList();
-
-        List<ErrorDetailResponse> globalDetails = ex.getBindingResult().getGlobalErrors().stream()
+                .toList());
+        details.addAll(ex.getBindingResult().getGlobalErrors().stream()
                 .map(error -> new ErrorDetailResponse(error.getObjectName(), resolveMessage(error)))
-                .toList();
-
-        if (!globalDetails.isEmpty()) {
-            details = new java.util.ArrayList<>(details);
-            details.addAll(globalDetails);
-        }
+                .toList());
 
         return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Request validation failed", details);
     }
